@@ -25,7 +25,7 @@
 
 ```
 - [ ] **Landing & Onboarding**
-    - [ ] Build landing layout + pricing section (static marketing copy)
+    - [✅] Build landing layout + pricing section (static marketing copy)
     - [ ] Implement “Coba Sekarang” CTA → route to Course Creation
 
 - [ ] **Course Creation**
