@@ -29,7 +29,7 @@
     - [ ] Implement “Coba Sekarang” CTA → route to Course Creation
 
 - [ ] **Course Creation**
-    - [ ] Two-field form + validation (name & description)
+    - [✅] Two-field form + validation (name & description)
     - [ ] POST to backend → trigger question‑generation prompt (controlled JSON)
 
 - [ ] **Auth**

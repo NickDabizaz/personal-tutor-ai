@@ -26,7 +26,7 @@ export default function Header({ navLinks }: HeaderProps) {
             </a>
           ))}
           <a
-            href="#pricing"
+            href="/create-course"
             className="px-4 py-2 rounded-lg bg-amber-400 text-gray-900 font-semibold hover:bg-amber-300 hover:scale-105 transition-all duration-300"
           >
             Get Started

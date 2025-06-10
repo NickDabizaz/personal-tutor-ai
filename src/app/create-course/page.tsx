@@ -1,12 +1,22 @@
 "use client";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 
 export default function CreateCoursePage() {
+  const router = useRouter();
   const [form, setForm] = useState({ name: "", description: "" });
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     setForm({ ...form, [e.target.name]: e.target.value });
+    if (errors[e.target.name as keyof typeof errors]) {
+      const newErrors = { ...errors };
+      delete newErrors[e.target.name as keyof typeof errors];
+      setErrors(newErrors);
+    }
   };
 
   const validate = () => {
@@ -17,61 +27,130 @@ export default function CreateCoursePage() {
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!validate()) return;
+    if (!validate() || isGenerating) return;
 
-    // For now, just log it
-    console.log("Form submitted:", form);
+    setIsGenerating(true);
+    setErrors({});
+
+    try {
+      const response = await fetch('/api/generate-questions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(form),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || "Failed to generate questions.");
+      }
+
+      const questions = await response.json();
+      
+      // Console log hasil dari API sesuai permintaan
+      console.log("Generated Questions from API:", questions);
+
+      sessionStorage.setItem('generatedQuestions', JSON.stringify(questions));
+      router.push('/curriculum-qa');
+
+    } catch (error: any) {
+      setErrors({ name: error.message });
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center px-6 py-16">
-      <form
-        onSubmit={handleSubmit}
-        className="w-full max-w-xl space-y-6 bg-gray-900 p-8 rounded-2xl shadow-lg border border-gray-800"
-      >
-        <h1 className="text-2xl font-bold text-white">Create a New Course</h1>
-
-        <div>
-          <label htmlFor="name" className="block mb-1 font-medium text-sm text-gray-300">
-            Course Name
-          </label>
-          <input
-            type="text"
-            id="name"
-            name="name"
-            placeholder="e.g. Intro to UI/UX Design"
-            value={form.name}
-            onChange={handleChange}
-            className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          {errors.name && <p className="text-red-400 text-sm mt-1">{errors.name}</p>}
-        </div>
-
-        <div>
-          <label htmlFor="description" className="block mb-1 font-medium text-sm text-gray-300">
-            Course Description
-          </label>
-          <textarea
-            id="description"
-            name="description"
-            rows={4}
-            placeholder="What will this course cover? Who is it for?"
-            value={form.description}
-            onChange={handleChange}
-            className="w-full p-3 rounded-lg bg-gray-800 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400"
-          />
-          {errors.description && <p className="text-red-400 text-sm mt-1">{errors.description}</p>}
-        </div>
-
-        <button
-          type="submit"
-          className="w-full py-3 bg-amber-400 text-gray-900 font-semibold rounded-lg hover:bg-amber-300 transition"
+    <main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">
+      <div className="w-full max-w-xl">
+        <form
+          onSubmit={handleSubmit}
+          className="w-full bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800 space-y-8"
         >
-          Submit
-        </button>
-      </form>
+          <div className="animate-fade-in text-center">
+            <h1 className="text-3xl font-bold text-white">
+              Tell Us About Your Course
+            </h1>
+            <p className="text-gray-400 mt-2 text-sm">
+              Let's start by defining your learning goal.
+            </p>
+          </div>
+
+          {/* Input 1: Course Name with Floating Label and Icon */}
+          <div className="relative animate-fade-in" style={{ animationDelay: '100ms' }}>
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+              <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />
+              </svg>
+            </div>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              value={form.name}
+              onChange={handleChange}
+              className="peer w-full p-3 pl-12 rounded-lg bg-gray-800/50 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 placeholder-transparent transition"
+              placeholder="Course Name"
+              disabled={isGenerating}
+            />
+            <label
+              htmlFor="name"
+              className="absolute left-12 -top-2.5 text-xs text-gray-400 transition-all 
+                         peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3 
+                         peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-400"
+            >
+              Course Name
+            </label>
+            {errors.name && <p className="text-red-400 text-xs mt-2 pl-1">{errors.name}</p>}
+          </div>
+
+          {/* Input 2: Course Description with Floating Label and Icon */}
+          <div className="relative animate-fade-in" style={{ animationDelay: '200ms' }}>
+            <div className="absolute top-3.5 left-0 pl-4 flex items-center pointer-events-none">
+                <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25H12" />
+                </svg>
+            </div>
+            <textarea
+              id="description"
+              name="description"
+              rows={4}
+              value={form.description}
+              onChange={handleChange}
+              className="peer w-full p-3 pl-12 rounded-lg bg-gray-800/50 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 placeholder-transparent transition"
+              placeholder="Course Description"
+              disabled={isGenerating}
+            />
+            <label
+              htmlFor="description"
+              className="absolute left-12 -top-2.5 text-xs text-gray-400 transition-all 
+                         peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3 
+                         peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-400"
+            >
+              Course Description
+            </label>
+            {errors.description && <p className="text-red-400 text-xs mt-2 pl-1">{errors.description}</p>}
+          </div>
+
+          {/* Submit Button */}
+          <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
+            <button
+              type="submit"
+              className="w-full flex items-center justify-center gap-2 py-3 bg-amber-400 text-gray-900 font-semibold rounded-lg hover:bg-amber-300 transition-all duration-300 hover:scale-[1.02] disabled:bg-amber-400/50 disabled:cursor-wait"
+              disabled={isGenerating}
+            >
+              {isGenerating && (
+                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+              )}
+              {isGenerating ? "Generating Questions..." : "Generate Questions"}
+            </button>
+          </div>
+        </form>
+      </div>
     </main>
   );
 }
