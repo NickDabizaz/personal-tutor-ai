@@ -2,12 +2,12 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
-// Interface baru yang sesuai dengan output JSON dari AI
+// Interface for the question structure from the AI's JSON output
 interface Question {
   no: number;
   category: string;
   question: string;
-  type: 0 | 1; // 0: Pilihan Ganda, 1: Isian
+  type: 0 | 1; // 0: Multiple Choice, 1: Fill-in
   options: string[];
   placeholder: string;
 }
@@ -40,7 +40,7 @@ export default function CurriculumQaPage() {
 
   const handleTextChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    // Jika ini adalah input 'other', simpan sebagai jawaban utama
+    // If this is the 'other' input, save it as the main answer
     if (name.includes(OTHER_OPTION_VALUE)) {
         const questionName = `question_${questions[currentStep].no}`;
         setAnswers((prev) => ({ ...prev, [questionName]: value }));
@@ -70,8 +70,18 @@ export default function CurriculumQaPage() {
   };
 
   const handleSubmit = () => {
-    console.log("Final Answers Submitted:", answers);
-    alert("Curriculum is being generated! (See console for answers)");
+    // Format the answers into the desired JSON structure
+    const formattedAnswers = questions.map(q => {
+        const answerKey = `question_${q.no}`;
+        const answerValue = answers[answerKey] || "Not answered";
+        return {
+            question: q.question,
+            answer: answerValue,
+        };
+    });
+
+    console.log("Final Answers Submitted:", JSON.stringify(formattedAnswers, null, 2));
+    alert("Curriculum is being generated! (See console for formatted answers)");
   };
 
   if (isLoading || questions.length === 0) {
@@ -107,7 +117,7 @@ export default function CurriculumQaPage() {
                     <span className="font-medium text-gray-200">{option}</span>
                   </label>
                 ))}
-                {/* Opsi "Other" dengan input text */}
+                {/* "Other" option with a text input */}
                 <div className="animate-fade-in" style={{ animationDelay: `${currentQuestion.options.length * 80}ms` }}>
                   <label className="flex items-center p-4 rounded-lg border cursor-pointer transition-all duration-200" data-checked={answers[questionName + OTHER_OPTION_VALUE] === answers[questionName]}>
                     <input type="radio" name={questionName} value={answers[questionName + OTHER_OPTION_VALUE] || ''} checked={answers[questionName + OTHER_OPTION_VALUE] === answers[questionName]} onChange={() => setAnswers(prev => ({...prev, [questionName]: prev[questionName+OTHER_OPTION_VALUE] || ''}))} className="hidden"/>
@@ -116,7 +126,7 @@ export default function CurriculumQaPage() {
                 </div>
               </>
             ) : (
-              // Tampilan premium untuk isian (textarea)
+              // Premium display for fill-in (textarea)
               <div className="relative animate-fade-in" style={{ animationDelay: '100ms' }}>
                 <div className="absolute top-3.5 left-0 pl-4 flex items-center pointer-events-none">
                   <svg className="w-5 h-5 text-gray-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487zm0 0L19.5 7.125" /></svg>

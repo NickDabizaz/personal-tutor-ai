@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Course name and description are required" }, { status: 400 });
     }
 
-    // Prompt canggih tetap sama
+    // Advanced prompt to generate diagnostic questions
     const prompt = `You are a world-class instructional designer from a top-tier university, specializing in crafting bespoke, professional-grade curricula. Your task is to generate a series of deeply insightful diagnostic questions for a student based on their initial course idea.
 
 The user's course idea is:
@@ -40,8 +40,9 @@ Before generating the questions, you must perform a silent, top-down analysis ba
       "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
       "placeholder": "An inspiring and specific placeholder for type 1 questions."
     }
-4.  For \`type: 0\` (multiple choice), provide exactly four specific, non-overlapping options. The frontend will automatically add a fifth 'Other (please specify)' input field. Do NOT include "Other" in the options array.
+4.  For \`type: 0\` (multiple choice), provide exactly four specific, non-overlapping options. The frontend will automatically add a fifth 'Other (please specify)' input field.
 5.  For \`type: 1\` (free text), the \`options\` array MUST be empty (\`[]\`). The \`placeholder\` text MUST be specific and inspiring, guiding the user to give a detailed answer.
+6.  **Crucially, do NOT generate generic options such as 'None of the above', 'All of the above', or 'Other'. All options must be specific and distinct choices related to the question.**
 `;
 
     const response = await ollama.chat({
@@ -62,11 +63,10 @@ Before generating the questions, you must perform a silent, top-down analysis ba
       
       const jsonString = llmOutput.substring(startIndex, endIndex + 1);
 
-      // --- SOLUSI BARU: Membersihkan string dari backslash yang tidak perlu ---
-      // Ini akan mengganti semua `\"` menjadi `"`
+      // Clean the string from unnecessary backslashes
       const cleanedJsonString = jsonString.replace(/\\"/g, '"');
       
-      // Parsing string yang sudah bersih
+      // Parse the cleaned string
       const questionsJson = JSON.parse(cleanedJsonString);
       
       if (!Array.isArray(questionsJson)) {
