@@ -32,9 +32,11 @@ export default function CreateCoursePage() {
     if (!validate() || isGenerating) return;
 
     setIsGenerating(true);
-    setErrors({});
+    setErrors({});    try {
+      // Store course name and description in sessionStorage
+      sessionStorage.setItem('courseName', form.name);
+      sessionStorage.setItem('courseDescription', form.description);
 
-    try {
       const response = await fetch('/api/generate-questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

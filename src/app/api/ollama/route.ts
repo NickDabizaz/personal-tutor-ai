@@ -5,7 +5,7 @@ export const runtime = "nodejs";
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  const { prompt, model = "deepseek-r1:8b" } = body;
+  const { prompt, model = process.env.OLLAMA_MODEL || "deepseek-r1:8b" } = body;
 
   const ollamaStream = await ollama.chat({
     model,

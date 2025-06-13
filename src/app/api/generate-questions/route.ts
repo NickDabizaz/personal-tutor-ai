@@ -3,6 +3,25 @@ import ollama from "ollama";
 
 export const runtime = "nodejs";
 
+// Helper function untuk ekstraksi dan pembersihan JSON
+function extractAndCleanJson(llmOutput: string): string {
+  // Coba ekstraksi dari blok markdown json
+  const markdownMatch = llmOutput.match(/```json\s*([\s\S]*?)\s*```/);
+  if (markdownMatch && markdownMatch[1]) {
+    return markdownMatch[1];
+  }
+
+  // Jika tidak ada blok markdown, cari array JSON pertama
+  const startIndex = llmOutput.indexOf('[');
+  const endIndex = llmOutput.lastIndexOf(']');
+  if (startIndex !== -1 && endIndex !== -1) {
+    return llmOutput.substring(startIndex, endIndex + 1);
+  }
+
+  throw new Error("Valid JSON array not found in the LLM response.");
+}
+
+
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
@@ -43,10 +62,8 @@ export async function POST(req: NextRequest) {
       4.  For \`type: 0\` (multiple choice), provide exactly four specific, non-overlapping options.
       5.  For \`type: 1\` (free text), the \`options\` array MUST be empty (\`[]\`). The \`placeholder\` text MUST be specific and inspiring.
       6.  Crucially, do NOT generate generic options such as 'None of the above', 'All of the above', or 'Other'. All options must be specific and distinct choices.
-    `;
-
-    const response = await ollama.chat({
-      model: "deepseek-r1:8b",
+    `;    const response = await ollama.chat({
+      model: process.env.OLLAMA_MODEL || "deepseek-r1:8b",
       messages: [{ role: "user", content: prompt }],
       stream: false,
     });
@@ -54,18 +71,7 @@ export async function POST(req: NextRequest) {
     const llmOutput = response.message.content;
 
     try {
-      const startIndex = llmOutput.indexOf('[');
-      const endIndex = llmOutput.lastIndexOf(']');
-
-      if (startIndex === -1 || endIndex === -1) {
-        throw new Error("Valid JSON array not found in the LLM response.");
-      }
-      
-      let jsonString = llmOutput.substring(startIndex, endIndex + 1);
-
-      // Clean the string from any potential markdown formatting that might have slipped through
-      jsonString = jsonString.replace(/^```json\n/, '').replace(/\n```$/, '');
-      
+      const jsonString = extractAndCleanJson(llmOutput);
       const questionsJson = JSON.parse(jsonString);
       
       if (!Array.isArray(questionsJson)) {

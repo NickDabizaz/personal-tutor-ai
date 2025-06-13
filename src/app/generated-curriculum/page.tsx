@@ -2,62 +2,27 @@
 
 "use client";
 
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Header from "@/Components/Header";
 import Footer from "@/Components/Footer";
 
-// Mock data that matches the API output structure.
-// Later, this will come from a state updated by a fetch call to your API.
-const mockCurriculum = {
-  title: "Machine Learning Fundamentals",
-  description: "This course is designed to provide a comprehensive introduction to the fundamentals of machine learning. You will start with the basic concepts and gradually move towards understanding different algorithms and their applications.",
-  modules: [
-    {
-      id: 1,
-      title: "1. Introduction To Machine Learning",
-      objective_1: "Understand the core concepts and types of machine learning.",
-      objective_2: "Identify real-world applications and use cases.",
-      objective_3: "Set up your Python environment for data science.",
-      estimated_minutes: 75,
-      total_lessons: 5
-    },
-    {
-      id: 2,
-      title: "2. Data Preprocessing and Cleaning",
-      objective_1: "Learn techniques for handling missing or corrupt data.",
-      objective_2: "Implement feature scaling and normalization.",
-      objective_3: "Split datasets into training and testing sets.",
-      estimated_minutes: 90,
-      total_lessons: 6
-    },
-    {
-      id: 3,
-      title: "3. Supervised Learning: Regression",
-      objective_1: "Build and train a Linear Regression model from scratch.",
-      objective_2: "Evaluate model performance using metrics like R-squared.",
-      objective_3: "Understand the concept of gradient descent.",
-      estimated_minutes: 120,
-      total_lessons: 7
-    },
-    {
-      id: 4,
-      title: "4. Supervised Learning: Classification",
-      objective_1: "Implement Logistic Regression for binary classification.",
-      objective_2: "Analyze a confusion matrix to assess accuracy.",
-      objective_3: "Explore Decision Trees and their advantages.",
-      estimated_minutes: 120,
-      total_lessons: 7
-    },
-    {
-      id: 5,
-      title: "5. Unsupervised Learning: Clustering",
-      objective_1: "Apply the K-Means algorithm to group unlabeled data.",
-      objective_2: "Visualize clusters using Matplotlib or Seaborn.",
-      objective_3: "Understand how to choose the optimal number of clusters.",
-      estimated_minutes: 100,
-      total_lessons: 6
-    }
-  ]
-};
+// Interface for curriculum structure
+interface Module {
+  id: number;
+  title: string;
+  objective_1: string;
+  objective_2: string;
+  objective_3: string;
+  estimated_minutes: number;
+  total_lessons: number;
+}
+
+interface Curriculum {
+  title: string;
+  description: string;
+  modules: Module[];
+}
 
 // A helper function to format minutes into a readable string (e.g., 90 -> "1h 30m")
 function formatMinutes(minutes: number): string {
@@ -70,14 +35,7 @@ function formatMinutes(minutes: number): string {
 }
 
 // Component for the new curriculum card
-function CurriculumCard({ title, objective_1, objective_2, objective_3, estimated_minutes, total_lessons }: {
-    title: string;
-    objective_1: string;
-    objective_2: string;
-    objective_3: string;
-    estimated_minutes: number;
-    total_lessons: number;
-}) {
+function CurriculumCard({ title, objective_1, objective_2, objective_3, estimated_minutes, total_lessons }: Module) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 transition-all duration-300 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/10">
       <div className="flex flex-col h-full">
@@ -116,11 +74,33 @@ function CurriculumCard({ title, objective_1, objective_2, objective_3, estimate
 
 
 export default function GeneratedCurriculumPage() {
+  const router = useRouter();
+  const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const navLinks = [
     { href: "#features", label: "Features" },
     { href: "#pricing", label: "Pricing" },
     { href: "#faq", label: "FAQ" },
   ];
+  
+  useEffect(() => {
+    const savedCurriculum = sessionStorage.getItem('generatedCurriculum');
+    if (savedCurriculum) {
+      setCurriculum(JSON.parse(savedCurriculum));
+    } else {
+      router.push('/create-course');
+    }
+    setIsLoading(false);
+  }, [router]);
+
+  if (isLoading || !curriculum) {
+    return (
+      <main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center">
+        <p>Generating your personalized curriculum...</p>
+      </main>
+    );
+  }
   
   return (
     <main className="font-sans bg-gray-950 text-gray-100 antialiased selection:bg-amber-400/30">
@@ -128,15 +108,14 @@ export default function GeneratedCurriculumPage() {
 
       <div className="container mx-auto px-6 md:px-12 py-16">
         <div className="md:grid md:grid-cols-12 md:gap-12">
-          
-          {/* Left Column: Table of Contents */}
+            {/* Left Column: Table of Contents */}
           <aside className="md:col-span-3 lg:col-span-3 mb-12 md:mb-0">
             <div className="sticky top-24">
-              <h2 className="text-2xl font-bold text-white mb-2">{mockCurriculum.title}</h2>
-              <p className="text-sm text-gray-400 mb-6">{mockCurriculum.description}</p>
+              <h2 className="text-2xl font-bold text-white mb-2">{curriculum.title}</h2>
+              <p className="text-sm text-gray-400 mb-6">{curriculum.description}</p>
               <h4 className="font-semibold text-amber-400 uppercase tracking-wider text-xs mb-3">Modules</h4>
               <ul className="space-y-2">
-                {mockCurriculum.modules.map((module) => (
+                {curriculum.modules.map((module) => (
                   <li key={module.id}>
                     <a href={`#module-${module.id}`} className="text-sm text-gray-400 hover:text-white transition-colors duration-300 block">
                       {module.title}
@@ -150,9 +129,10 @@ export default function GeneratedCurriculumPage() {
           {/* Right Column: Module Cards */}
           <div className="md:col-span-9 lg:col-span-9">
             <div className="space-y-6">
-              {mockCurriculum.modules.map((module) => (
+              {curriculum.modules.map((module) => (
                 <section key={module.id} id={`module-${module.id}`}>
                    <CurriculumCard
+                    id={module.id}
                     title={module.title}
                     objective_1={module.objective_1}
                     objective_2={module.objective_2}
