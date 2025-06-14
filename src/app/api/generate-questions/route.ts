@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
       2.  Your response MUST BE ONLY a valid JSON array string. Do NOT include any text, explanation, or markdown formatting (like \`\`\`json\`) before or after the JSON array.
       3.  Each object in the JSON array must follow the exact structure shown in the 'Correct Example' above.
       4.  **MANDATORY: ALL questions MUST use \`"type": 0\` (multiple choice). NEVER generate \`"type": 1\` (essay questions). This is non-negotiable.**
-      5.  For each question, provide three or four specific and distinct options that are relevant to the course topic.
-      6.  **Your options must be specific and concrete. You are STRICTLY FORBIDDEN from generating generic options like "Other", "None of the above", or "All of the above". The user interface will automatically provide an "Other" option separately.**
-      7.  **IMPORTANT: Every single question must be answerable through the specific multiple choice options you provide. Do not rely on generic fallback options.**
+      5.  For each question, provide three to four **meaningful and specific potential answers** as options that are directly relevant to the course topic.
+      6.  **The options should be distinct, realistic choices that students might actually select. Do not provide generic options like "Other", "None of the above", or "All of the above"**, because the user interface already includes a separate field for custom answers.
+      7.  **IMPORTANT: Focus on creating thoughtful, specific options that reflect real learning scenarios and student preferences. Each option should be a complete, meaningful response.**
     `;const response = await ollama.chat({
       model: process.env.OLLAMA_MODEL || "deepseek-r1:8b",
       messages: [{ role: "user", content: prompt }],

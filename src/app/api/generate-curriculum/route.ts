@@ -13,37 +13,37 @@ interface GenerateCurriculumRequest {
   }[];
 }
 
-// Helper function that's more robust for JSON extraction and cleaning
-function extractAndSanitizeJson(llmOutput: string): string {
-    let jsonString = '';
-    
-    // Try extracting from markdown json block first
-    const markdownMatch = llmOutput.match(/```json\s*([\s\S]*?)\s*```/);
-    if (markdownMatch && markdownMatch[1]) {
-        jsonString = markdownMatch[1];
-    } else {
-        // If not, look for raw JSON object
-        const startIndex = llmOutput.indexOf('{');
-        const lastIndex = llmOutput.lastIndexOf('}');
-        if (startIndex !== -1 && lastIndex > startIndex) {
-            jsonString = llmOutput.substring(startIndex, lastIndex + 1);
-        } else {
-            throw new Error("No valid JSON object found in the LLM response.");
-        }
-    }
+// Helper function yang sangat robust untuk ekstraksi dan perbaikan JSON
+function extractAndSanitizeJson(text: string): string | null {
+  // 1. Cari '{' pertama dan '}' terakhir untuk menangkap blok JSON
+  const startIndex = text.indexOf('{');
+  const endIndex = text.lastIndexOf('}');
 
-    if (!jsonString) {
-        throw new Error("Could not extract JSON string from the response.");
-    }
+  if (startIndex === -1 || endIndex === -1 || endIndex < startIndex) {
+    return null; // Tidak ada blok objek JSON yang valid
+  }
 
-    // Clean up common errors before parsing
-    const sanitizedString = jsonString
-        // Remove comments (both /* */ and //)
-        .replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '')
-        // Remove trailing commas (commas at the end of objects or arrays)
-        .replace(/,\s*([}\]])/g, '$1');
+  let jsonString = text.substring(startIndex, endIndex + 1);
 
-    return sanitizedString;
+  // 2. SECARA OTOMATIS TAMBAHKAN KOMA YANG HILANG
+  // Regex ini mencari pola: "sebuah-string" diikuti oleh newline lalu "properti_berikutnya":
+  // dan menyisipkan koma di antaranya.
+  jsonString = jsonString.replace(/"\s*\n\s*"/g, '",\n"');
+
+  // 3. Hapus koma di akhir (trailing comma) yang mungkin juga dibuat oleh AI
+  jsonString = jsonString.replace(/,\s*([}\]])/g, '$1');
+
+  // 4. Hapus comments yang mungkin ada
+  jsonString = jsonString.replace(/\/\*[\s\S]*?\*\/|\/\/.*/g, '');
+
+  // 5. Coba parse untuk validasi akhir
+  try {
+    JSON.parse(jsonString);
+    return jsonString;
+  } catch (error) {
+    console.error("Gagal parse JSON bahkan setelah sanitasi:", error);
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest) {
@@ -86,22 +86,26 @@ export async function POST(req: NextRequest) {
                 "total_lessons": 5
               }
             ]
-          }
-      6.  **JSON RULES TO FOLLOW STRICTLY:**
+          }      6.  **JSON RULES TO FOLLOW STRICTLY:**
           - All property names (keys) MUST be enclosed in double quotes (e.g., "title").
+          - **Ensure every key-value pair is separated by a comma, including between objectives (objective_1, objective_2, objective_3).**
           - Ensure every key is followed by a colon ':'.
           - Do NOT use single quotes.
           - Do NOT add a comma after the last item in a list or object.
+          - **CRITICAL: Pay special attention to commas between consecutive properties. Missing commas will break the JSON format.**
     `;    const response = await ollama.chat({
       model: process.env.OLLAMA_MODEL || "deepseek-r1:8b",
       messages: [{ role: "user", content: prompt }],
       stream: false,
-    });
-
-    const llmOutput = response.message.content;
+    });    const llmOutput = response.message.content;
 
     try {
       const sanitizedJsonString = extractAndSanitizeJson(llmOutput);
+      
+      if (!sanitizedJsonString) {
+        throw new Error("Could not extract or sanitize valid JSON from the LLM response.");
+      }
+      
       const curriculumJson = JSON.parse(sanitizedJsonString);
 
       return NextResponse.json(curriculumJson, { status: 200 });

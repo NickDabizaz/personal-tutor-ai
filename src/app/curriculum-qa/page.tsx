@@ -21,10 +21,10 @@ export default function CurriculumQaPage() {
   const router = useRouter();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
-  const [answers, setAnswers] = useState<{ [key: string]: string }>({});
-  const [error, setError] = useState<string | null>(null);
+  const [answers, setAnswers] = useState<{ [key: string]: string }>({});  const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false); // New state for curriculum generation loading
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState(""); // State untuk pesan loading dinamis
 
   useEffect(() => {
     const savedQuestions = sessionStorage.getItem('generatedQuestions');
@@ -71,41 +71,63 @@ export default function CurriculumQaPage() {
     if (currentStep > 0) {
       setCurrentStep(currentStep - 1);
     }
-  };
-  const handleSubmit = async () => {
+  };  const handleSubmit = async () => {
     setIsGenerating(true);
     setError(null);
 
-    const formattedAnswers = questions.map(q => {
-      const answerKey = `question_${q.no}`;
-      const answerValue = answers[answerKey] || "Not answered";
-      return {
-        question: q.question,
-        answer: answerValue,
-      };
-    });
+    // 1. Format jawaban Q&A
+    const formattedAnswers = questions.map(q => ({
+      question: q.question,
+      answer: answers[`question_${q.no}`] || "Not answered",
+    }));
 
     const name = sessionStorage.getItem('courseName') || '';
     const description = sessionStorage.getItem('courseDescription') || '';
 
     try {
-      const response = await fetch('/api/generate-curriculum', {
+      // 2. Generate Kerangka Kurikulum
+      setLoadingMessage("Creating your curriculum structure...");
+      const curriculumResponse = await fetch('/api/generate-curriculum', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, answers: formattedAnswers }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to generate curriculum.");
+      if (!curriculumResponse.ok) {
+        throw new Error('Failed to generate the curriculum overview.');
       }
 
-      const curriculum = await response.json();
-      sessionStorage.setItem('generatedCurriculum', JSON.stringify(curriculum));
+      const curriculum = await curriculumResponse.json();
+      sessionStorage.setItem('generatedCurriculum', JSON.stringify(curriculum));      // 3. Loop untuk Generate Konten Setiap Modul
+      for (const curriculumModule of curriculum.modules) {
+        setLoadingMessage(`Generating content for "${curriculumModule.title}"...`);
+        const moduleResponse = await fetch('/api/generate-module-content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },          body: JSON.stringify({
+            moduleTitle: curriculumModule.title,
+            courseTitle: curriculum.title,
+            objectives: [curriculumModule.objective_1, curriculumModule.objective_2, curriculumModule.objective_3],
+            total_lessons: curriculumModule.total_lessons,
+          }),
+        });
+
+        if (!moduleResponse.ok) {
+          console.error(`Failed to generate content for module: ${curriculumModule.title}`);
+          // Lanjutkan ke modul berikutnya meskipun satu gagal
+          continue;
+        }
+
+        const moduleContent = await moduleResponse.json();
+        // Simpan konten modul ke localStorage
+        localStorage.setItem(`module-${curriculumModule.id}-content`, JSON.stringify(moduleContent));
+      }
+
+      // 4. Setelah semua selesai, arahkan ke halaman kurikulum
       router.push('/generated-curriculum');
 
-    } catch (error: any) {
-      setError(error.message);
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setError(errorMessage);
     } finally {
       setIsGenerating(false);
     }
@@ -122,10 +144,9 @@ export default function CurriculumQaPage() {
   const currentQuestion = questions[currentStep];
   const questionName = `question_${currentQuestion.no}`;
   const progressPercentage = ((currentStep) / (questions.length - 1)) * 100;  return (
-    <>
-      {/* Loader will appear when isGenerating is true */}
+    <>      {/* Loader akan muncul ketika isGenerating true dengan pesan dinamis */}
       {isGenerating && (
-        <LoadingOverlay message="Creating Your Curriculum..." />
+        <LoadingOverlay message={loadingMessage || "Please wait..."} />
       )}
       <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
         <AppHeader />        <main className="flex-grow flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">

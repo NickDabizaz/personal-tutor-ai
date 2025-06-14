@@ -4,6 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
 
@@ -35,7 +36,7 @@ function formatMinutes(minutes: number): string {
 }
 
 // Component for the new curriculum card
-function CurriculumCard({ title, objective_1, objective_2, objective_3, estimated_minutes, total_lessons }: Module) {
+function CurriculumCard({ id, title, objective_1, objective_2, objective_3, estimated_minutes, total_lessons, courseTitle }: Module & { courseTitle: string }) {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 transition-all duration-300 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/10">
       <div className="flex flex-col h-full">
@@ -63,9 +64,12 @@ function CurriculumCard({ title, objective_1, objective_2, objective_3, estimate
               <span>{total_lessons} Lessons</span>
             </div>
           </div>
-          <button className="px-5 py-2.5 rounded-lg bg-orange-600 text-white font-semibold text-sm hover:bg-orange-700 transition-colors duration-300">
+          <Link 
+            href={`/course/${encodeURIComponent(courseTitle)}/module/${id}`}
+            className="px-5 py-2.5 rounded-lg bg-orange-600 text-white font-semibold text-sm hover:bg-orange-700 transition-colors duration-300"
+          >
             Start Module
-          </button>
+          </Link>
         </div>
       </div>
     </div>
@@ -121,8 +125,7 @@ export default function GeneratedCurriculumPage() {
 
           {/* Right Column: Module Cards */}
           <div className="md:col-span-9 lg:col-span-9">
-            <div className="space-y-6">
-              {curriculum.modules.map((module) => (
+            <div className="space-y-6">              {curriculum.modules.map((module) => (
                 <section key={module.id} id={`module-${module.id}`}>
                    <CurriculumCard
                     id={module.id}
@@ -132,6 +135,7 @@ export default function GeneratedCurriculumPage() {
                     objective_3={module.objective_3}
                     estimated_minutes={module.estimated_minutes}
                     total_lessons={module.total_lessons}
+                    courseTitle={curriculum.title}
                   />
                 </section>
               ))}
