@@ -1,6 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import LoadingOverlay from "@/Components/LoadingOverlay";
+import AppHeader from "@/Components/AppHeader";
+import Footer from "@/Components/Footer";
 
 // Interface for the question structure from the AI's JSON output
 interface Question {
@@ -118,12 +121,16 @@ export default function CurriculumQaPage() {
 
   const currentQuestion = questions[currentStep];
   const questionName = `question_${currentQuestion.no}`;
-  const progressPercentage = ((currentStep) / (questions.length - 1)) * 100;
-
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">
-      <div className="w-full max-w-2xl bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800">
-        <div className="mb-8">
+  const progressPercentage = ((currentStep) / (questions.length - 1)) * 100;  return (
+    <>
+      {/* Loader will appear when isGenerating is true */}
+      {isGenerating && (
+        <LoadingOverlay message="Creating Your Curriculum..." />
+      )}
+      <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
+        <AppHeader />        <main className="flex-grow flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">
+          <div className="w-full max-w-2xl bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800">
+            <div className="mb-8">
           <p className="text-xs font-semibold text-amber-400 uppercase tracking-wider mb-2">{currentQuestion.category}</p>
           <div className="w-full bg-gray-700 rounded-full h-2">
             <div className="bg-amber-400 h-2 rounded-full transition-all duration-500 ease-out" style={{ width: `${progressPercentage}%` }}/>
@@ -158,24 +165,20 @@ export default function CurriculumQaPage() {
                 <textarea id={questionName} name={questionName} rows={4} value={answers[questionName] || ""} onChange={handleTextChange} className="peer w-full p-3 pl-12 rounded-lg bg-gray-800/50 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 placeholder-transparent transition" placeholder={currentQuestion.placeholder} />
                 <label htmlFor={questionName} className="absolute left-12 -top-2.5 text-xs text-gray-400 transition-all peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3 peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-400">{currentQuestion.placeholder}</label>
               </div>
-            )}
-          </div>
+            )}          </div>
         </div>
         
-        {error && <p className="text-red-400 text-sm mb-6 text-center animate-fade-in">{error}</p>}        <div className="flex justify-between items-center">
+        {error && <p className="text-red-400 text-sm mb-6 text-center animate-fade-in">{error}</p>}
+
+        <div className="flex justify-between items-center">
           <button onClick={handleBack} disabled={currentStep === 0 || isGenerating} className="px-6 py-2 bg-gray-700 text-gray-300 font-semibold rounded-lg hover:bg-gray-600 transition disabled:opacity-40 disabled:cursor-not-allowed">Back</button>
           <button onClick={handleNext} disabled={isGenerating} className="px-6 py-2 bg-amber-400 text-gray-900 font-semibold rounded-lg hover:bg-amber-300 hover:scale-105 transition-all duration-300 disabled:opacity-50 disabled:cursor-wait">
-            {isGenerating ? (
-              <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-              </svg>
-            ) : (
-              currentStep === questions.length - 1 ? "Generate Curriculum" : "Next"
-            )}
-          </button>
-        </div>
+            {currentStep === questions.length - 1 ? "Generate Curriculum" : "Next"}
+          </button>        </div>
+          </div>
+        </main>
+        <Footer />
       </div>
-    </main>
+    </>
   );
 }

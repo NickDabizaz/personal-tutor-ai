@@ -6,7 +6,7 @@ export const runtime = "nodejs";
 // Interface for the expected request body
 interface GenerateCurriculumRequest {
   name: string;
-  description: string;
+  description?: string; // Made optional
   answers: {
     question: string;
     answer: string;
@@ -47,24 +47,20 @@ function extractAndSanitizeJson(llmOutput: string): string {
 }
 
 export async function POST(req: NextRequest) {
-  try {
-    const body: GenerateCurriculumRequest = await req.json();
+  try {    const body: GenerateCurriculumRequest = await req.json();
     const { name, description, answers } = body;
 
-    if (!name || !description || !answers || !Array.isArray(answers) || answers.length === 0) {
-      return NextResponse.json({ error: "Course name, description, and a non-empty array of answers are required" }, { status: 400 });
+    if (!name || !answers || !Array.isArray(answers) || answers.length === 0) {
+      return NextResponse.json({ error: "Course name and a non-empty array of answers are required" }, { status: 400 });
     }
 
     const qaString = answers
       .map(item => `Question: ${item.question}\nAnswer: ${item.answer}`)
-      .join("\n\n");
-
-    const prompt = `
+      .join("\n\n");    const prompt = `
       You are an expert Curriculum Architect. Your task is to create a detailed, practical course curriculum based on a user's goal and their answers.
 
       **User's Goal:**
-      - Topic: "${name}"
-      - Description: "${description}"
+      - Topic: "${name}"${description ? `\n      - Description: "${description}"` : `\n      - Description: Not provided`}
 
       **User's Answers:**
       ${qaString}

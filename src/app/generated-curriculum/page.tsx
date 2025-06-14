@@ -4,7 +4,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import Header from "@/Components/Header";
+import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
 
 // Interface for curriculum structure
@@ -78,12 +78,6 @@ export default function GeneratedCurriculumPage() {
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   
-  const navLinks = [
-    { href: "#features", label: "Features" },
-    { href: "#pricing", label: "Pricing" },
-    { href: "#faq", label: "FAQ" },
-  ];
-  
   useEffect(() => {
     const savedCurriculum = sessionStorage.getItem('generatedCurriculum');
     if (savedCurriculum) {
@@ -101,10 +95,9 @@ export default function GeneratedCurriculumPage() {
       </main>
     );
   }
-  
-  return (
+    return (
     <main className="font-sans bg-gray-950 text-gray-100 antialiased selection:bg-amber-400/30">
-      <Header navLinks={navLinks} />
+      <AppHeader />
 
       <div className="container mx-auto px-6 md:px-12 py-16">
         <div className="md:grid md:grid-cols-12 md:gap-12">

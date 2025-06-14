@@ -28,18 +28,13 @@ function extractJsonFromString(text: string): string | null {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description } = body;
-
-    if (!name || !description) {
-      return NextResponse.json({ error: "Course name and description are required" }, { status: 400 });
-    }
-
-    const prompt = `
+    const { name, description } = body;    if (!name) {
+      return NextResponse.json({ error: "Course name is required" }, { status: 400 });
+    }    const prompt = `
       You are a world-class instructional designer, specializing in crafting professional-grade curricula. Your task is to generate a series of insightful diagnostic questions for a student based on their initial course idea.
 
       The user's course idea is:
-      - Topic: "${name}"
-      - Description: "${description}"
+      - Topic: "${name}"${description ? `\n      - Description: "${description}"` : `\n      - Description: Not provided`}
 
       These questions are a diagnostic tool to extract the necessary information for YOU to build a world-class curriculum later. The questions must probe the student's foundational knowledge, motivations, learning methodology, and desired outcomes with surgical precision.
 
@@ -47,25 +42,22 @@ export async function POST(req: NextRequest) {
       1.  **Foundational Knowledge:** Assess their starting point.
       2.  **Motivation & Goals:** Understand the 'why' behind their learning journey.
       3.  **Learning Methodology:** Uncover their preferred way of absorbing information.
-      4.  **Desired Outcomes & Application:** Clarify what success looks like for them.
-
-      ---
+      4.  **Desired Outcomes & Application:** Clarify what success looks like for them.---
       **CRITICAL: JSON FORMAT EXAMPLE**
       Your output MUST be a valid JSON array.
       - **Correct Example of one object in the array:**
         \`{ "no": 1, "category": "Motivation & Goals", "question": "What is your primary goal?", "type": 0, "options": ["A", "B", "C", "D"], "placeholder": "" }\`
       - **Incorrect Example to AVOID (extra comma, missing quotes):**
-        \`{ "no": 2,, category: "...", ... }\`
-      ---
-      
-      **GENERATION RULES:**
+        \`{ "no": 2,, category: "...", ... }\`      ---
+        **GENERATION RULES:**
       1.  **Generate a concise number of questions, between 5 and 7.**
       2.  Your response MUST BE ONLY a valid JSON array string. Do NOT include any text, explanation, or markdown formatting (like \`\`\`json\`) before or after the JSON array.
-      3.  Each object in the JSON array must follow the exact structure shown in the 'Correct Example' above. All property names MUST be in double quotes.
-      4.  For \`type: 0\` (multiple choice), provide exactly four specific, non-overlapping options.
-      5.  For \`type: 1\` (free text), the \`options\` array MUST be empty (\`[]\`). The \`placeholder\` text MUST be specific and inspiring.
-      6.  Crucially, do NOT generate generic options such as 'None of the above', 'All of the above', or 'Other'. All options must be specific and distinct choices.
-    `;    const response = await ollama.chat({
+      3.  Each object in the JSON array must follow the exact structure shown in the 'Correct Example' above.
+      4.  **MANDATORY: ALL questions MUST use \`"type": 0\` (multiple choice). NEVER generate \`"type": 1\` (essay questions). This is non-negotiable.**
+      5.  For each question, provide three or four specific and distinct options that are relevant to the course topic.
+      6.  **Your options must be specific and concrete. You are STRICTLY FORBIDDEN from generating generic options like "Other", "None of the above", or "All of the above". The user interface will automatically provide an "Other" option separately.**
+      7.  **IMPORTANT: Every single question must be answerable through the specific multiple choice options you provide. Do not rely on generic fallback options.**
+    `;const response = await ollama.chat({
       model: process.env.OLLAMA_MODEL || "deepseek-r1:8b",
       messages: [{ role: "user", content: prompt }],
       stream: false,
@@ -108,3 +100,4 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "An internal server error occurred." }, { status: 500 });
   }
 }
+

@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import LoadingOverlay from "@/Components/LoadingOverlay";
+import AppHeader from "@/Components/AppHeader";
+import Footer from "@/Components/Footer";
 
 export default function CreateCoursePage() {
   const router = useRouter();
@@ -18,11 +21,10 @@ export default function CreateCoursePage() {
       setErrors(newErrors);
     }
   };
-
   const validate = () => {
     const newErrors: typeof errors = {};
     if (!form.name.trim()) newErrors.name = "Course name is required.";
-    if (!form.description.trim()) newErrors.description = "Description is required.";
+    // Description is now optional - no validation needed
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -54,30 +56,34 @@ export default function CreateCoursePage() {
       console.log("Generated Questions from API:", questions);
 
       sessionStorage.setItem('generatedQuestions', JSON.stringify(questions));
-      router.push('/curriculum-qa');
-
-    } catch (error: any) {
-      setErrors({ name: error.message });
+      router.push('/curriculum-qa');    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      setErrors({ name: errorMessage });
     } finally {
       setIsGenerating(false);
     }
-  };
-
-  return (
-    <main className="min-h-screen bg-gray-950 text-gray-100 flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">
-      <div className="w-full max-w-xl">
-        <form
-          onSubmit={handleSubmit}
-          className="w-full bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800 space-y-8"
-        >
-          <div className="animate-fade-in text-center">
-            <h1 className="text-3xl font-bold text-white">
-              Tell Us About Your Course
-            </h1>
-            <p className="text-gray-400 mt-2 text-sm">
-              Let's start by defining your learning goal.
-            </p>
-          </div>
+  };  return (
+    <>
+      {/* Loader will appear when isGenerating is true */}
+      {isGenerating && (
+        <LoadingOverlay message="Analyzing Course Requirements..." />
+      )}
+      <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
+        <AppHeader />
+        <main className="flex-grow flex items-center justify-center px-4 py-16 antialiased selection:bg-amber-400/30">
+          <div className="w-full max-w-xl">
+            <form
+              onSubmit={handleSubmit}
+              className="w-full bg-gray-900 p-8 rounded-2xl shadow-2xl border border-gray-800 space-y-8"
+            >
+              <div className="animate-fade-in text-center">
+                <h1 className="text-3xl font-bold text-white">
+                  Tell Us About Your Course
+                </h1>
+                <p className="text-gray-400 mt-2 text-sm">
+                  Let&apos;s start by defining your learning goal.
+                </p>
+              </div>
 
           {/* Input 1: Course Name with Floating Label and Icon */}
           <div className="relative animate-fade-in" style={{ animationDelay: '100ms' }}>
@@ -123,17 +129,15 @@ export default function CreateCoursePage() {
               className="peer w-full p-3 pl-12 rounded-lg bg-gray-800/50 border border-gray-700 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-amber-400 placeholder-transparent transition"
               placeholder="Course Description"
               disabled={isGenerating}
-            />
-            <label
+            />            <label
               htmlFor="description"
               className="absolute left-12 -top-2.5 text-xs text-gray-400 transition-all 
                          peer-placeholder-shown:text-base peer-placeholder-shown:text-gray-400 peer-placeholder-shown:top-3 
                          peer-focus:-top-2.5 peer-focus:text-xs peer-focus:text-amber-400"
             >
-              Course Description
+              Course Description (Optional)
             </label>
-            {errors.description && <p className="text-red-400 text-xs mt-2 pl-1">{errors.description}</p>}
-          </div>
+            {errors.description && <p className="text-red-400 text-xs mt-2 pl-1">{errors.description}</p>}          </div>
 
           {/* Submit Button */}
           <div className="animate-fade-in" style={{ animationDelay: '300ms' }}>
@@ -142,17 +146,13 @@ export default function CreateCoursePage() {
               className="w-full flex items-center justify-center gap-2 py-3 bg-amber-400 text-gray-900 font-semibold rounded-lg hover:bg-amber-300 transition-all duration-300 hover:scale-[1.02] disabled:bg-amber-400/50 disabled:cursor-wait"
               disabled={isGenerating}
             >
-              {isGenerating && (
-                <svg className="animate-spin -ml-1 mr-2 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-              )}
-              {isGenerating ? "Generating Questions..." : "Generate Questions"}
-            </button>
+              Generate Questions            </button>
           </div>
         </form>
       </div>
     </main>
-  );
+    <Footer />
+  </div>
+</>
+);
 }
