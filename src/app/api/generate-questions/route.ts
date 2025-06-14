@@ -3,22 +3,25 @@ import ollama from "ollama";
 
 export const runtime = "nodejs";
 
-// Helper function untuk ekstraksi dan pembersihan JSON
-function extractAndCleanJson(llmOutput: string): string {
-  // Coba ekstraksi dari blok markdown json
-  const markdownMatch = llmOutput.match(/```json\s*([\s\S]*?)\s*```/);
-  if (markdownMatch && markdownMatch[1]) {
-    return markdownMatch[1];
-  }
+// Helper function that's more robust for JSON extraction
+function extractJsonFromString(text: string): string | null {
+  // Regex to find the first valid JSON block (array [...] or object {...})
+  const jsonRegex = /\[[\s\S]*\]|{[\s\S]*}/;
+  const match = text.match(jsonRegex);
 
-  // Jika tidak ada blok markdown, cari array JSON pertama
-  const startIndex = llmOutput.indexOf('[');
-  const endIndex = llmOutput.lastIndexOf(']');
-  if (startIndex !== -1 && endIndex !== -1) {
-    return llmOutput.substring(startIndex, endIndex + 1);
+  if (match) {
+    // Ensure the matched text is actually parseable JSON
+    try {
+      JSON.parse(match[0]);
+      return match[0];    } catch {
+      // If regex found wrong brackets/braces, ignore
+      console.error("Regex match was not valid JSON, returning null.");
+      return null;
+    }
   }
-
-  throw new Error("Valid JSON array not found in the LLM response.");
+  
+  console.error("No valid JSON block found in the string.");
+  return null;
 }
 
 
@@ -66,23 +69,39 @@ export async function POST(req: NextRequest) {
       model: process.env.OLLAMA_MODEL || "deepseek-r1:8b",
       messages: [{ role: "user", content: prompt }],
       stream: false,
-    });
-
-    const llmOutput = response.message.content;
+    });    const llmOutput = response.message.content;
 
     try {
-      const jsonString = extractAndCleanJson(llmOutput);
+      const jsonString = extractJsonFromString(llmOutput);
+
+      if (!jsonString) {
+        // If no JSON could be extracted, throw error
+        throw new Error("Could not extract valid JSON from the LLM response.");
+      }
+
       const questionsJson = JSON.parse(jsonString);
       
+      // Optional: You can still check if the result is an array
       if (!Array.isArray(questionsJson)) {
-        throw new Error("LLM did not return a valid JSON array.");
+        throw new Error("Extracted JSON is not an array.");
       }
       
       return NextResponse.json(questionsJson, { status: 200 });
 
-    } catch (parseError: any) {
-      console.error("Failed to parse LLM response. Raw output:", llmOutput);
-      return NextResponse.json({ error: `Failed to process AI response: ${parseError.message}` }, { status: 500 });
+    } catch (error: unknown) {
+      // More informative error logging
+      console.error("====================== DEBUG START ======================");
+      console.error("Failed to parse LLM response. See raw output below.");
+      console.error("ERROR MESSAGE:", error instanceof Error ? error.message : String(error));
+      console.error("--- LLM RAW OUTPUT ---");
+      console.error(llmOutput);
+      console.error("--- END RAW OUTPUT ---");
+      console.error("======================= DEBUG END =======================");
+      
+      const errorMessage = error instanceof Error ? error.message : "Unknown parsing error";
+      return NextResponse.json({ 
+        error: `Failed to process AI response. Details: ${errorMessage}` 
+      }, { status: 500 });
     }
   } catch (error) {
     console.error("API Error:", error);
