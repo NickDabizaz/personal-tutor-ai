@@ -12,28 +12,45 @@ interface Lesson {
   content: string;
 }
 
-interface ModuleContent {
+interface Module {
+  id: number;
+  title: string;
   lessons: Lesson[];
+  // tambahkan properti lain jika perlu ditampilkan
+}
+
+interface Curriculum {
+  modules: Module[];
 }
 
 export default function ModulePage() {
   const params = useParams();
-  const { moduleId } = params;
+  // Pastikan moduleId adalah string
+  const moduleId = Array.isArray(params.moduleId) ? params.moduleId[0] : params.moduleId;
 
   // State untuk data
-  const [moduleContent, setModuleContent] = useState<ModuleContent | null>(null);
+  const [currentModule, setCurrentModule] = useState<Module | null>(null);
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (moduleId) {
-      const savedContent = localStorage.getItem(`module-${moduleId}-content`);
-      if (savedContent) {
-        const parsedContent: ModuleContent = JSON.parse(savedContent);
-        setModuleContent(parsedContent);
-        // Otomatis pilih lesson pertama saat data dimuat
-        if (parsedContent.lessons && parsedContent.lessons.length > 0) {
-          setSelectedLesson(parsedContent.lessons[0]);
+      // Ambil seluruh data kurikulum dari sessionStorage
+      const savedCurriculum = sessionStorage.getItem(`generatedCurriculum`);
+      if (savedCurriculum) {
+        const parsedCurriculum: Curriculum = JSON.parse(savedCurriculum);
+        
+        // Cari modul yang sesuai berdasarkan moduleId dari URL
+        const foundModule = parsedCurriculum.modules.find(
+          (module) => module.id.toString() === moduleId
+        );
+
+        if (foundModule) {
+            setCurrentModule(foundModule);
+            // Otomatis pilih lesson pertama saat data dimuat
+            if (foundModule.lessons && foundModule.lessons.length > 0) {
+              setSelectedLesson(foundModule.lessons[0]);
+            }
         }
       }
       setIsLoading(false);
@@ -52,7 +69,7 @@ export default function ModulePage() {
   }
 
   // Tampilan jika konten tidak ada
-  if (!moduleContent || !moduleContent.lessons || moduleContent.lessons.length === 0) {
+  if (!currentModule || !currentModule.lessons || currentModule.lessons.length === 0) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
         <AppHeader />
@@ -61,7 +78,7 @@ export default function ModulePage() {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
           </svg>
           <h2 className="text-2xl font-bold text-white mb-2">Content Not Available</h2>
-          <p className="text-gray-400 max-w-md">Content for this module could not be loaded. This might happen if the content generation was interrupted.</p>
+          <p className="text-gray-400 max-w-md">Content for this module could not be loaded. Please try generating the course again.</p>
           <Link href="/create-course" className="mt-6 px-5 py-2.5 rounded-lg bg-orange-600 text-white font-semibold text-sm hover:bg-orange-700 transition-colors duration-300">
             Generate New Course
           </Link>
@@ -84,9 +101,9 @@ export default function ModulePage() {
           {/* Sidebar Daftar Lesson */}
           <aside className="col-span-12 md:col-span-4 lg:col-span-3">
             <div className="sticky top-24">
-              <h3 className="font-bold text-lg mb-4 text-white">Lessons</h3>
+              <h3 className="font-bold text-lg mb-4 text-white">{currentModule.title}</h3>
               <ul className="space-y-1">
-                {moduleContent.lessons.map((lesson, index) => (
+                {currentModule.lessons.map((lesson, index) => (
                   <li key={index}>
                     <button
                       onClick={() => setSelectedLesson(lesson)}

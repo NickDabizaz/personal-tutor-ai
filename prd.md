@@ -1,4 +1,6 @@
-# Personal Tutor AI – Quick Notes
+# Personal Tutor AI – Quic- [✅] **Landing & Onboarding**
+    - [✅] Build landing layout + pricing section (static marketing copy)
+    - [✅] Implement "Coba Sekarang" CTA → route to Course Creationotes
 
 ## 1. Project Flow (MVP)
 
@@ -28,27 +30,28 @@
     - [✅] Build landing layout + pricing section (static marketing copy)
     - [ ] Implement “Coba Sekarang” CTA → route to Course Creation
 
-- [ ] **Course Creation**
+- [✅] **Course Creation**
     - [✅] Two-field form + validation (name & description)
-    - [ ] POST to backend → trigger question‑generation prompt (controlled JSON)
+    - [✅] POST to backend → trigger question‑generation prompt (controlled JSON)
 
 - [ ] **Auth**
     - [ ] Google OAuth setup (Firebase/Auth0)
     - [ ] Email/password fallback
 
-- [ ] **Curriculum Q&A**
-    - [ ] Render dynamic form from JSON (component loop)
-    - [ ] Persist answers (local & backend) (store as array)
+- [✅] **Curriculum Q&A**
+    - [✅] Render dynamic form from JSON (component loop)
+    - [✅] Persist answers (local & backend) (store as array)
 
-- [ ] **Curriculum Generation**
-    - [ ] Backend call to LLM with answers (chunking & retries)
-    - [ ] Save curriculum structure in DB
+- [✅] **Curriculum Generation**
+    - [✅] Backend call to LLM with answers (chunking & retries)
+    - [✅] Save curriculum structure in DB (sessionStorage implementation)
 
-- [ ] **Overview Page**
-    - [ ] Display modules & sub‑courses (accordion UI)
+- [✅] **Overview Page**
+    - [✅] Display modules & sub‑courses (accordion UI)
 
-- [ ] **Module Page**
-    - [ ] Markdown material + chat window (stream AI responses)
+- [✅] **Module Page**
+    - [✅] Display lesson content with HTML rendering
+    - [ ] Chat window (stream AI responses)
     - [ ] Track completion state (progress API)
 
 - [ ] **Quiz Page**

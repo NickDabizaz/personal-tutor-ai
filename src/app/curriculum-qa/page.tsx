@@ -74,8 +74,8 @@ export default function CurriculumQaPage() {
   };  const handleSubmit = async () => {
     setIsGenerating(true);
     setError(null);
+    setLoadingMessage("Crafting your complete, personalized course..."); // Pesan loading baru
 
-    // 1. Format jawaban Q&A
     const formattedAnswers = questions.map(q => ({
       question: q.question,
       answer: answers[`question_${q.no}`] || "Not answered",
@@ -85,8 +85,7 @@ export default function CurriculumQaPage() {
     const description = sessionStorage.getItem('courseDescription') || '';
 
     try {
-      // 2. Generate Kerangka Kurikulum
-      setLoadingMessage("Creating your curriculum structure...");
+      // Hanya satu panggilan API untuk mendapatkan semua data
       const curriculumResponse = await fetch('/api/generate-curriculum', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -94,35 +93,19 @@ export default function CurriculumQaPage() {
       });
 
       if (!curriculumResponse.ok) {
-        throw new Error('Failed to generate the curriculum overview.');
+        const errorData = await curriculumResponse.json();
+        throw new Error(errorData.error || 'Failed to generate the complete curriculum.');
       }
 
-      const curriculum = await curriculumResponse.json();
-      sessionStorage.setItem('generatedCurriculum', JSON.stringify(curriculum));      // 3. Loop untuk Generate Konten Setiap Modul
-      for (const curriculumModule of curriculum.modules) {
-        setLoadingMessage(`Generating content for "${curriculumModule.title}"...`);
-        const moduleResponse = await fetch('/api/generate-module-content', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },          body: JSON.stringify({
-            moduleTitle: curriculumModule.title,
-            courseTitle: curriculum.title,
-            objectives: [curriculumModule.objective_1, curriculumModule.objective_2, curriculumModule.objective_3],
-            total_lessons: curriculumModule.total_lessons,
-          }),
-        });
+      const completeCurriculum = await curriculumResponse.json();
 
-        if (!moduleResponse.ok) {
-          console.error(`Failed to generate content for module: ${curriculumModule.title}`);
-          // Lanjutkan ke modul berikutnya meskipun satu gagal
-          continue;
-        }
+      // Simpan seluruh data kurikulum (termasuk konten) ke sessionStorage
+      sessionStorage.setItem('generatedCurriculum', JSON.stringify(completeCurriculum));
+      
+      // Hapus data yang sudah tidak perlu
+      localStorage.clear(); // Menghapus semua data lama dari localStorage
 
-        const moduleContent = await moduleResponse.json();
-        // Simpan konten modul ke localStorage
-        localStorage.setItem(`module-${curriculumModule.id}-content`, JSON.stringify(moduleContent));
-      }
-
-      // 4. Setelah semua selesai, arahkan ke halaman kurikulum
+      // Arahkan ke halaman kurikulum
       router.push('/generated-curriculum');
 
     } catch (error: unknown) {
