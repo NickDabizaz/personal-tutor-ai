@@ -7,6 +7,8 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
+// Impor helper yang relevan
+import { getCourseProgress, calculateModuleProgress, calculateCourseProgress } from "@/utils/progress";
 
 // Interface for curriculum structure
 interface Module {
@@ -17,6 +19,7 @@ interface Module {
   objective_3: string;
   estimated_minutes: number;
   total_lessons: number;
+  lessons: { title: string; content: string }[];
 }
 
 interface Curriculum {
@@ -35,13 +38,37 @@ function formatMinutes(minutes: number): string {
     return remainingMinutes > 0 ? `${hours}h ${remainingMinutes}m` : `${hours}h`;
 }
 
-// Component for the new curriculum card
-function CurriculumCard({ id, title, objective_1, objective_2, objective_3, estimated_minutes, total_lessons, courseTitle }: Module & { courseTitle: string }) {
+function CurriculumCard({
+  id,
+  title,
+  objective_1,
+  objective_2,
+  objective_3,
+  estimated_minutes,
+  total_lessons,
+  courseTitle,
+  progress, // prop baru
+}: Module & { courseTitle: string; progress: number }) {
+  const isCompleted = progress === 100;
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-6 transition-all duration-300 hover:border-amber-400/50 hover:shadow-lg hover:shadow-amber-500/10">
+    <div className={`bg-gray-900 border rounded-xl p-6 transition-all duration-300 relative ${isCompleted ? 'border-green-500/30' : 'border-gray-800 hover:border-amber-400/50'}`}>
       <div className="flex flex-col h-full">
-        <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
+        <h3 className="text-xl font-bold text-white mb-2">{title}</h3>
+        <p className="text-gray-400 text-xs mb-4">
+            {total_lessons} Lessons | {estimated_minutes} min
+        </p>
         
+        {/* Progress Bar */}
+        <div className="mb-4">
+            <div className="w-full bg-gray-700 rounded-full h-1.5">
+              <div 
+                className={`h-1.5 rounded-full ${isCompleted ? 'bg-green-500' : 'bg-amber-400'}`} 
+                style={{ width: `${progress}%` }}>
+              </div>
+            </div>
+            <p className="text-xs text-right text-gray-400 mt-1">{progress}% Complete</p>
+        </div>
+
         {/* Objectives List */}
         <ul className="text-gray-400 text-sm space-y-2 list-disc list-inside flex-grow">
             <li>{objective_1}</li>
@@ -68,7 +95,7 @@ function CurriculumCard({ id, title, objective_1, objective_2, objective_3, esti
             href={`/course/${encodeURIComponent(courseTitle)}/module/${id}`}
             className="px-5 py-2.5 rounded-lg bg-orange-600 text-white font-semibold text-sm hover:bg-orange-700 transition-colors duration-300"
           >
-            Start Module
+            {progress > 0 && progress < 100 ? 'Continue' : progress === 100 ? 'Review' : 'Start Module'}
           </Link>
         </div>
       </div>
@@ -81,11 +108,20 @@ export default function GeneratedCurriculumPage() {
   const router = useRouter();
   const [curriculum, setCurriculum] = useState<Curriculum | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // State baru untuk data progres
+  const [courseProgress, setCourseProgress] = useState<{[key: string]: {lessons: {[key: number]: boolean}}}>({});
+  const [progressPercentage, setProgressPercentage] = useState(0);
   
   useEffect(() => {
     const savedCurriculum = sessionStorage.getItem('generatedCurriculum');
     if (savedCurriculum) {
-      setCurriculum(JSON.parse(savedCurriculum));
+      const parsedCurriculum = JSON.parse(savedCurriculum);
+      setCurriculum(parsedCurriculum);
+      // Ambil dan atur data progres
+      const progressData = getCourseProgress(parsedCurriculum.title);
+      setCourseProgress(progressData);
+      const percentage = calculateCourseProgress(parsedCurriculum.title, parsedCurriculum.modules);
+      setProgressPercentage(percentage);
     } else {
       router.push('/create-course');
     }
@@ -99,46 +135,69 @@ export default function GeneratedCurriculumPage() {
       </main>
     );
   }
-    return (
+
+  return (
     <main className="font-sans bg-gray-950 text-gray-100 antialiased selection:bg-amber-400/30">
       <AppHeader />
 
       <div className="container mx-auto px-6 md:px-12 py-16">
+        {/* TAMPILKAN PROGRESS BAR DI SINI */}
+        <div className="mb-12">
+          <div className="flex justify-between items-center mb-2">
+            <h2 className="text-2xl font-bold text-white">{curriculum.title}</h2>
+            <span className="text-lg font-semibold text-amber-400">
+              {progressPercentage}%
+            </span>
+          </div>
+          <div className="w-full bg-gray-700 rounded-full h-2.5">
+            <div
+              className="bg-amber-400 h-2.5 rounded-full transition-all duration-500"
+              style={{ width: `${progressPercentage}%` }}
+            ></div>
+          </div>
+          <p className="text-sm text-gray-400 mt-3">{curriculum.description}</p>
+        </div>
+
         <div className="md:grid md:grid-cols-12 md:gap-12">
             {/* Left Column: Table of Contents */}
-          <aside className="md:col-span-3 lg:col-span-3 mb-12 md:mb-0">
-            <div className="sticky top-24">
-              <h2 className="text-2xl font-bold text-white mb-2">{curriculum.title}</h2>
-              <p className="text-sm text-gray-400 mb-6">{curriculum.description}</p>
+          <aside className="md:col-span-3 lg:col-span-3 mb-12 md:mb-0">            <div className="sticky top-24">
               <h4 className="font-semibold text-amber-400 uppercase tracking-wider text-xs mb-3">Modules</h4>
               <ul className="space-y-2">
-                {curriculum.modules.map((module) => (
-                  <li key={module.id}>
-                    <a href={`#module-${module.id}`} className="text-sm text-gray-400 hover:text-white transition-colors duration-300 block">
-                      {module.title}
-                    </a>
-                  </li>
-                ))}
+                {curriculum.modules.map((module) => {
+                  const moduleProgressData = courseProgress[module.id];
+                  const progressPercentage = calculateModuleProgress(moduleProgressData, module.lessons?.length || 0);
+                  return (
+                    <li key={module.id} className="flex items-center gap-2">
+                      {progressPercentage === 100 && (
+                        <span className="text-green-400 text-xs">✓</span>
+                      )}
+                      <a href={`#module-${module.id}`} className="text-sm text-gray-400 hover:text-white transition-colors duration-300 block">
+                        {module.title}
+                      </a>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </aside>
 
           {/* Right Column: Module Cards */}
-          <div className="md:col-span-9 lg:col-span-9">
-            <div className="space-y-6">              {curriculum.modules.map((module) => (
-                <section key={module.id} id={`module-${module.id}`}>
-                   <CurriculumCard
-                    id={module.id}
-                    title={module.title}
-                    objective_1={module.objective_1}
-                    objective_2={module.objective_2}
-                    objective_3={module.objective_3}
-                    estimated_minutes={module.estimated_minutes}
-                    total_lessons={module.total_lessons}
-                    courseTitle={curriculum.title}
-                  />
-                </section>
-              ))}
+          <div className="md:col-span-9 lg:col-span-9">            <div className="space-y-6">
+              {curriculum.modules.map((module) => {
+                const moduleProgressData = courseProgress[module.id];
+                const progressPercentage = calculateModuleProgress(moduleProgressData, module.lessons.length);
+                
+                return (
+                  <section key={module.id} id={`module-${module.id}`}>
+                    <CurriculumCard
+                      {...module}
+                      courseTitle={curriculum.title}
+                      // Kirim progress percentage ke card
+                      progress={progressPercentage}
+                    />
+                  </section>
+                );
+              })}
             </div>
           </div>
 

@@ -48,9 +48,13 @@
 
 - [✅] **Overview Page**
     - [✅] Display modules & sub‑courses (accordion UI)
+    - [✅] Module progress bars based on lesson completion
+    - [✅] Course-wide progress tracking and visualization
 
 - [✅] **Module Page**
     - [✅] Display lesson content with HTML rendering
+    - [✅] Lesson-level completion tracking with checkboxes
+    - [✅] Module progress bar showing completed lessons percentage
     - [ ] Chat window (stream AI responses)
     - [ ] Track completion state (progress API)
 

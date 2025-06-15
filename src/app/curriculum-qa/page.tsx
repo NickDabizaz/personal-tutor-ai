@@ -74,7 +74,7 @@ export default function CurriculumQaPage() {
   };  const handleSubmit = async () => {
     setIsGenerating(true);
     setError(null);
-    setLoadingMessage("Crafting your complete, personalized course..."); // Pesan loading baru
+    setLoadingMessage("Crafting your complete, personalized course...");
 
     const formattedAnswers = questions.map(q => ({
       question: q.question,
@@ -85,25 +85,25 @@ export default function CurriculumQaPage() {
     const description = sessionStorage.getItem('courseDescription') || '';
 
     try {
-      // Hanya satu panggilan API untuk mendapatkan semua data
-      const curriculumResponse = await fetch('/api/generate-curriculum', {
+      // Panggil API orkestrator yang baru untuk membuat seluruh course sekaligus
+      const response = await fetch('/api/generate-full-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, answers: formattedAnswers }),
       });
 
-      if (!curriculumResponse.ok) {
-        const errorData = await curriculumResponse.json();
-        throw new Error(errorData.error || 'Failed to generate the complete curriculum.');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate the complete course.');
       }
 
-      const completeCurriculum = await curriculumResponse.json();
+      const completeCurriculum = await response.json();
 
-      // Simpan seluruh data kurikulum (termasuk konten) ke sessionStorage
+      // Simpan seluruh data kurikulum yang sudah lengkap dengan semua konten
       sessionStorage.setItem('generatedCurriculum', JSON.stringify(completeCurriculum));
       
-      // Hapus data yang sudah tidak perlu
-      localStorage.clear(); // Menghapus semua data lama dari localStorage
+      // Bersihkan localStorage dari progres lama jika ada
+      localStorage.removeItem(`progress_${name}`);
 
       // Arahkan ke halaman kurikulum
       router.push('/generated-curriculum');

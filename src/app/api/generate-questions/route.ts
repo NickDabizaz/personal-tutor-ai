@@ -42,11 +42,11 @@ export async function POST(req: NextRequest) {
       1.  **Foundational Knowledge:** Assess their starting point.
       2.  **Motivation & Goals:** Understand the 'why' behind their learning journey.
       3.  **Learning Methodology:** Uncover their preferred way of absorbing information.
-      4.  **Desired Outcomes & Application:** Clarify what success looks like for them.---
+      4.  **Desired Outcomes & Application:** Clarify what success looks like for them.      ---
       **CRITICAL: JSON FORMAT EXAMPLE**
       Your output MUST be a valid JSON array.
       - **Correct Example of one object in the array:**
-        \`{ "no": 1, "category": "Motivation & Goals", "question": "What is your primary goal?", "type": 0, "options": ["A", "B", "C", "D"], "placeholder": "" }\`
+        \`{ "no": 1, "category": "Motivation & Goals", "question": "What is your primary goal?", "type": 0, "options": ["Building personal projects", "Starting a new career", "Upskilling for my current job"], "placeholder": "" }\`
       - **Incorrect Example to AVOID (extra comma, missing quotes):**
         \`{ "no": 2,, category: "...", ... }\`      ---
         **GENERATION RULES:**
