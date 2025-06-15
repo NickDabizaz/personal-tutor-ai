@@ -111,8 +111,8 @@ export default function GeneratedCurriculumPage() {
   // State baru untuk data progres
   const [courseProgress, setCourseProgress] = useState<{[key: string]: {lessons: {[key: number]: boolean}}}>({});
   const [progressPercentage, setProgressPercentage] = useState(0);
-  
-  useEffect(() => {
+  const [progressVersion, setProgressVersion] = useState(0); // Tambahkan state ini untuk refresh
+    useEffect(() => {
     const savedCurriculum = sessionStorage.getItem('generatedCurriculum');
     if (savedCurriculum) {
       const parsedCurriculum = JSON.parse(savedCurriculum);
@@ -126,7 +126,38 @@ export default function GeneratedCurriculumPage() {
       router.push('/create-course');
     }
     setIsLoading(false);
-  }, [router]);
+  }, [router, progressVersion]); // Tambahkan progressVersion sebagai dependency
+
+  // Trigger refresh ketika window focus (saat kembali dari halaman lain)
+  useEffect(() => {
+    const handleFocus = () => {
+      setProgressVersion(v => v + 1);
+    };
+    
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // --- TAMBAHKAN useEffect BARU INI ---
+  useEffect(() => {
+    if (!curriculum || Object.keys(courseProgress).length === 0) {
+      return;
+    }
+
+    const allModulesCompleted = curriculum.modules.every(module => {
+      const moduleProgressData = courseProgress[module.id];
+      const progressPercentage = calculateModuleProgress(moduleProgressData, module.lessons.length);
+      return progressPercentage === 100;
+    });
+
+    if (allModulesCompleted && curriculum.modules.length > 0) {
+      // Tunggu sebentar lalu arahkan ke halaman selamat
+      setTimeout(() => {
+        router.push('/course-complete');
+      }, 1500); // Delay 1.5 detik agar pengguna sempat melihat 100%
+    }
+  }, [curriculum, courseProgress, router]);
+  // ------------------------------------
 
   if (isLoading || !curriculum) {
     return (

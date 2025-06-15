@@ -15,6 +15,7 @@ interface Module {
   objective_2: string;
   objective_3: string;
   total_lessons: number;
+  estimated_minutes: number;
   lessons: Lesson[];
 }
 interface Curriculum {
@@ -44,13 +45,12 @@ async function callOllama(prompt: string, retries = 3): Promise<string> {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { name, description, answers } = body;
-    const qaString = answers.map((item: any) => `Q: ${item.question}\\nA: ${item.answer}`).join("\\n\\n");
+    const { name, description = "", answers } = body;
+    const qaString = answers.map((item: { question: string; answer: string }) => `Q: ${item.question}\\nA: ${item.answer}`).join("\\n\\n");
 
     // === LANGKAH 1: Generate Judul, Deskripsi, dan Daftar Modul (sebagai teks) ===
-    console.log("Step 1: Generating curriculum structure outline...");
-    const structurePrompt = `
-      Based on the user's goal: "${name}" and their answers: ${qaString}, generate a course outline.
+    console.log("Step 1: Generating curriculum structure outline...");    const structurePrompt = `
+      Based on the user's goal: "${name}"${description ? ` (${description})` : ""} and their answers: ${qaString}, generate a course outline.
       
       Provide your response in this exact format, with each item on a new line:
       Course Title: [A compelling title for the course]
@@ -106,14 +106,15 @@ export async function POST(req: NextRequest) {
       });
       
       const lessons = await Promise.all(contentPromises);
-      
-      // Membuat objek modul lengkap
+        // Membuat objek modul lengkap
       const newModule: Partial<Module> = {
         id: index + 1,
         title: moduleTitle,
         lessons: lessons,
         total_lessons: lessons.length,
-        // Objectives bisa kita generate di sini atau hardcode placeholder
+        // --- TAMBAHKAN ESTIMASI WAKTU ---
+        estimated_minutes: lessons.length * 15, // Estimasi 15 menit per pelajaran
+        // ------------------------------
         objective_1: `Understand the core concepts of ${moduleTitle}.`,
         objective_2: `Apply the principles of ${moduleTitle} in practice.`,
         objective_3: `Build foundational skills in ${moduleTitle}.`
