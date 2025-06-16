@@ -6,6 +6,7 @@ import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
 import Link from "next/link";
 import { getCourseProgress, updateLessonCompletion, calculateModuleProgress } from "@/utils/progress";
+import ChatbotTutor from "@/Components/ChatbotTutor"; // Import the chatbot component
 
 interface Lesson { 
   title: string; 
@@ -23,17 +24,26 @@ interface Curriculum {
   modules: Module[]; 
 }
 
+// Type for the active tab state
+type ActiveTab = 'content' | 'chatbot';
+
 export default function ModulePage() {
   const params = useParams();
   const router = useRouter();
   const courseTitle = decodeURIComponent(Array.isArray(params.courseTitle) ? params.courseTitle[0] : params.courseTitle || '');
   const moduleId = Array.isArray(params.moduleId) ? params.moduleId[0] : params.moduleId;
-
   const [currentModule, setCurrentModule] = useState<Module | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number>(0);
   const [progressVersion, setProgressVersion] = useState(0);
+  const [activeTab, setActiveTab] = useState<ActiveTab>('content'); // New state for tabs
 
+  // Reset to 'content' tab whenever the lesson changes
+  useEffect(() => {
+    setActiveTab('content');
+  }, [selectedLessonIndex]);
+
+  // Effect to load curriculum data
   useEffect(() => {
     if (moduleId && courseTitle) {
       const savedCurriculumStr = sessionStorage.getItem('generatedCurriculum');
@@ -66,11 +76,8 @@ export default function ModulePage() {
     }
   };
     const lessonProgress = moduleId ? getCourseProgress(courseTitle)[moduleId]?.lessons || {} : {};
-  const moduleProgress = calculateModuleProgress({ lessons: lessonProgress }, currentModule?.lessons.length || 0);
-
-  // Re-calculate progress when progressVersion changes
-  useEffect(() => {
-    // This effect ensures UI updates when progress changes
+  const moduleProgress = calculateModuleProgress({ lessons: lessonProgress }, currentModule?.lessons.length || 0);    // Re-calculate progress when progressVersion changes
+  useEffect(() => {    // This effect ensures the UI updates when progress changes
   }, [progressVersion]);
   
   const selectedLesson = currentModule?.lessons[selectedLessonIndex];
@@ -81,13 +88,13 @@ export default function ModulePage() {
       <div className="bg-gray-950 min-h-screen flex items-center justify-center text-white">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-400 mx-auto mb-4"></div>
-          <p>Loading lessons...</p>
+          <p>Loading lesson...</p>
         </div>
       </div>
     );
   }
 
-  if (!currentModule || !currentModule.lessons) {
+  if (!currentModule || !currentModule.lessons || !selectedLesson) {
     return (
       <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
         <AppHeader />
@@ -105,14 +112,13 @@ export default function ModulePage() {
 
   return (
     <div className="flex flex-col min-h-screen bg-gray-950 text-gray-100">
-      <AppHeader />
-      <div className="container mx-auto px-6 md:px-12 py-12 flex-grow">
+      <AppHeader />      <div className="container mx-auto px-6 md:px-12 py-12 flex-grow">
         <div className="mb-8">
           <Link href="/generated-curriculum" className="text-sm text-amber-400 hover:text-amber-300">
             ← Back to Curriculum
           </Link>
-        </div>
-        <div className="grid grid-cols-12 gap-8">
+        </div>        <div className="grid grid-cols-12 gap-8">
+          {/* Left Sidebar */}
           <aside className="col-span-12 md:col-span-4 lg:col-span-3">
             <div className="sticky top-24">
               <h3 className="font-bold text-lg mb-4 text-white">{currentModule.title}</h3>
@@ -132,9 +138,7 @@ export default function ModulePage() {
                     <button
                       onClick={() => handleSelectLesson(index)}
                       className={`w-full text-left text-sm p-2 rounded-md transition-colors ${
-                        selectedLessonIndex === index
-                          ? "text-amber-400"
-                          : "text-gray-400 hover:text-white"
+                        selectedLessonIndex === index ? "text-amber-400" : "text-gray-400 hover:text-white"
                       }`}
                     >
                       {lesson.title}
@@ -143,30 +147,53 @@ export default function ModulePage() {
                 ))}
               </ul>
             </div>
-          </aside>
+          </aside>          {/* Main Content with Tabs */}
+          <main className="col-span-12 md:col-span-8 lg:col-span-9 flex flex-col">
+            <div className="bg-gray-900 border border-gray-800 rounded-xl flex-grow flex flex-col">
+              {/* Tab Navigation */}
+              <div className="flex border-b border-gray-800">
+                <button
+                  onClick={() => setActiveTab('content')}
+                  className={`px-6 py-3 text-sm font-semibold transition-colors ${activeTab === 'content' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'}`}
+                >
+                  Lesson Content
+                </button>
+                <button
+                  onClick={() => setActiveTab('chatbot')}
+                  className={`px-6 py-3 text-sm font-semibold transition-colors ${activeTab === 'chatbot' ? 'text-amber-400 border-b-2 border-amber-400' : 'text-gray-400 hover:text-white'}`}
+                >
+                  AI Tutor
+                </button>
+              </div>
 
-          <main className="col-span-12 md:col-span-8 lg:col-span-9 flex flex-col justify-between">
-            <article className="bg-gray-900 border border-gray-800 rounded-xl p-6 md:p-8">
-              {selectedLesson ? (
-                <>
-                  <h2 className="text-2xl font-bold text-white mb-1">{selectedLesson.title}</h2>
-                  <p className="text-sm text-gray-500 mb-6">Lesson {selectedLessonIndex + 1} of {currentModule.lessons.length}</p>
-                  <div 
-                    className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-amber-400" 
-                    dangerouslySetInnerHTML={{ __html: selectedLesson.content }} 
+              {/* Conditional Tab Content */}
+              <div className="flex-grow">
+                {activeTab === 'content' && (
+                  <article className="p-6 md:p-8">
+                    <h2 className="text-2xl font-bold text-white mb-1">{selectedLesson.title}</h2>
+                    <p className="text-sm text-gray-500 mb-6">Lesson {selectedLessonIndex + 1} of {currentModule.lessons.length}</p>
+                    <div 
+                      className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-amber-400" 
+                      dangerouslySetInnerHTML={{ __html: selectedLesson.content }} 
+                    />
+                  </article>
+                )}
+                
+                {activeTab === 'chatbot' && (
+                  <ChatbotTutor
+                    lessonTitle={selectedLesson.title}
+                    lessonContent={selectedLesson.content}
                   />
-                </>
-              ) : (
-                <p>Select a lesson to begin.</p>
-              )}
-            </article>
+                )}
+              </div>
+            </div>
 
             <div className="mt-6 flex justify-end">
               <button
                 onClick={handleNextLesson}
                 className="px-8 py-3 rounded-lg font-semibold transition-all duration-300 bg-amber-400 text-gray-900 hover:bg-amber-300"
               >
-                {isLastLesson ? 'Finish Module' : 'Next Lesson'}
+                {isLastLesson ? 'Finish Module' : 'Mark as Complete & Next'}
               </button>
             </div>
           </main>
