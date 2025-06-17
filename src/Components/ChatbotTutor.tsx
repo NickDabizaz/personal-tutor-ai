@@ -18,10 +18,12 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
   // Auto-scroll to the latest message
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Only scroll if there is more than one message (i.e., not just the initial greeting)
+    if (messages.length > 1) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [messages]);
   
   // Set the initial greeting message from the AI

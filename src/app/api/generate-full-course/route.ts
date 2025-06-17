@@ -94,13 +94,16 @@ export async function POST(req: NextRequest) {
       `;
       const lessonsResponse = await callOllama(lessonsPrompt);
       const lessonTitles = lessonsResponse.split('\n').filter(t => t.trim() !== '');
-      
-      // Generate konten untuk setiap pelajaran
+        // Generate konten untuk setiap pelajaran
       const contentPromises = lessonTitles.map(async (lessonTitle) => {
         const contentPrompt = `
-          Write the lesson content for a topic titled "${lessonTitle}" within the module "${moduleTitle}".
-          The content should be in simple HTML format, like "<h2>${lessonTitle}</h2><p>Your explanation here...</p>".
-          Provide ONLY the HTML content as your response.
+          Generate a brief, placeholder lesson content for a topic titled "${lessonTitle}" within the module "${moduleTitle}".
+
+          IMPORTANT DEVELOPMENT RULE: For faster testing, keep the content very short. Just one heading and one sentence.
+          
+          Use this exact HTML format: "<h2>${lessonTitle}</h2><p>This is a placeholder for the lesson content. More details will be added later in production.</p>"
+
+          Provide ONLY the HTML content as your response. Do not add any other text.
         `;
         const content = await callOllama(contentPrompt);
         return { title: lessonTitle, content: content };
