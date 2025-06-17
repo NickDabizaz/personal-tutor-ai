@@ -52,13 +52,14 @@ export async function POST(req: NextRequest) {
     console.log("Step 1: Generating curriculum structure outline...");    const structurePrompt = `
       Based on the user's goal: "${name}"${description ? ` (${description})` : ""} and their answers: ${qaString}, generate a course outline.
       
+      IMPORTANT DEVELOPMENT RULE: For faster testing, please generate a maximum of 3 modules.
+      
       Provide your response in this exact format, with each item on a new line:
       Course Title: [A compelling title for the course]
       Course Description: [A brief, one-sentence description of the course]
       Module 1: [Title for Module 1]
       Module 2: [Title for Module 2]
       Module 3: [Title for Module 3]
-      Module 4: [Title for Module 4]
     `;
     const structureResponse = await callOllama(structurePrompt);
     

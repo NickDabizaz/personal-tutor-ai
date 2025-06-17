@@ -166,10 +166,9 @@ export default function ModulePage() {
                 </button>
               </div>
 
-              {/* Conditional Tab Content */}
-              <div className="flex-grow">
+              {/* Conditional Tab Content */}              <div className="flex-grow">
                 {activeTab === 'content' && (
-                  <article className="p-6 md:p-8">
+                  <article className="p-6 md:p-8 overflow-y-auto h-[60vh]">
                     <h2 className="text-2xl font-bold text-white mb-1">{selectedLesson.title}</h2>
                     <p className="text-sm text-gray-500 mb-6">Lesson {selectedLessonIndex + 1} of {currentModule.lessons.length}</p>
                     <div 

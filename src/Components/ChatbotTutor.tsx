@@ -96,11 +96,10 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
     } finally {
       setIsLoading(false);
     }
-  };
-  return (
-    <div className="flex flex-col h-full bg-gray-900">
-      {/* Chat Area - This part is scrollable due to overflow-y-auto */}
-      <div className="flex-grow p-6 overflow-y-auto">
+  };  return (
+    <div className="flex flex-col bg-gray-900">
+      {/* Chat Area - Fixed height and scrollable */}
+      <div className="p-6 overflow-y-auto h-[60vh]">
         <div className="space-y-6">
           {messages.map((msg, index) => (
             <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
