@@ -17,12 +17,18 @@ interface ChatbotTutorProps {
 export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTutorProps) {  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  // Auto-scroll to the latest message
+  
+  // --- PERUBAHAN 1: Buat ref untuk container scroll ---
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // --- PERUBAHAN 2: Gunakan metode scroll yang lebih presisi ---
   useEffect(() => {
-    // Only scroll if there is more than one message (i.e., not just the initial greeting)
-    if (messages.length > 1) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    const lastMessage = messages[messages.length - 1];
+    // Hanya scroll jika container ada dan pesan terakhir punya konten
+    if (lastMessage && lastMessage.content && scrollContainerRef.current) {
+      const scrollContainer = scrollContainerRef.current;
+      // Set posisi scroll ke paling bawah
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
     }
   }, [messages]);
   
@@ -100,8 +106,8 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
     }
   };  return (
     <div className="flex flex-col bg-gray-900">
-      {/* Chat Area - Fixed height and scrollable */}
-      <div className="p-6 overflow-y-auto h-[60vh]">
+      {/* --- PERUBAHAN 3: Pasang ref baru di sini --- */}
+      <div ref={scrollContainerRef} className="p-6 overflow-y-auto h-[60vh]">
         <div className="space-y-6">
           {messages.map((msg, index) => (
             <div key={index} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
@@ -113,7 +119,7 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
               </div>
             </div>
           ))}
-          <div ref={messagesEndRef} />
+          {/* Ref messagesEndRef sudah tidak diperlukan lagi */}
         </div>
       </div>
 

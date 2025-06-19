@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import LoadingOverlay from "@/Components/LoadingOverlay";
 import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
+import { validateCurriculumStructure } from "@/utils/curriculumValidator";
 
 // Interface for the question structure from the AI's JSON output
 interface Question {
@@ -72,9 +73,18 @@ export default function CurriculumQaPage() {
       setCurrentStep(currentStep - 1);
     }
   };  const handleSubmit = async () => {
+    // Validasi dasar
+    const questionName = `question_${questions[currentStep].no}`;
+    if (!answers[questionName]?.trim() && currentStep < questions.length - 1) {
+      setError("Please provide an answer to continue.");
+      return;
+    }
+
     setIsGenerating(true);
     setError(null);
-    setLoadingMessage("Crafting your complete, personalized course...");
+
+    // Clear any existing curriculum data to prevent conflicts
+    sessionStorage.removeItem('generatedCurriculum');
 
     const formattedAnswers = questions.map(q => ({
       question: q.question,
@@ -85,35 +95,101 @@ export default function CurriculumQaPage() {
     const description = sessionStorage.getItem('courseDescription') || '';
 
     try {
-      // Panggil API orkestrator yang baru untuk membuat seluruh course sekaligus
-      const response = await fetch('/api/generate-full-course', {
+      // --- Tahap 1: Generate Outline ---
+      setLoadingMessage("Crafting your course outline...");
+      console.log("Step 1: Fetching course outline...");
+
+      const outlineResponse = await fetch('/api/generate-outline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, description, answers: formattedAnswers }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate the complete course.');
+      if (!outlineResponse.ok) {
+        throw new Error('Failed to generate course outline.');
       }
 
-      const completeCurriculum = await response.json();
+      const outline = await outlineResponse.json();
+      console.log("✅ Step 1 Success: Outline received", outline);
 
-      // Simpan seluruh data kurikulum yang sudah lengkap dengan semua konten
-      sessionStorage.setItem('generatedCurriculum', JSON.stringify(completeCurriculum));
+      const { title, description: courseDescription, moduleTitles } = outline;
+
+      // --- Tahap 2: Generate Detail Modul ---
+      setLoadingMessage("Structuring course modules...");
+      console.log("Step 2: Fetching module structures...");
+
+      const modulesResponse = await fetch('/api/generate-modules', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseTitle: title, moduleTitles }),
+      });
+
+      if (!modulesResponse.ok) {
+        throw new Error('Failed to generate module structures.');
+      }
+
+      const modulesData = await modulesResponse.json();
+      console.log("✅ Step 2 Success: Module structures received", modulesData);
+      console.log("modulesData.modules is array:", Array.isArray(modulesData.modules));
+
+      // Buat struktur kurikulum awal
+      const finalCurriculum = {
+        title,
+        description: courseDescription,
+        modules: modulesData.modules, // Gunakan modulesData.modules bukan modules
+      };
+
+      console.log("Final curriculum structure before lesson content:", finalCurriculum);
+
+      // --- Tahap 3: Generate Konten untuk Setiap Pelajaran ---
+      console.log("Step 3: Fetching lesson content for all modules...");
+
+      for (let i = 0; i < finalCurriculum.modules.length; i++) {
+        const currentModule = finalCurriculum.modules[i];
+        for (let j = 0; j < currentModule.lessons.length; j++) {
+          const lesson = currentModule.lessons[j];
+          
+          setLoadingMessage(`Generating: "${lesson.title}"...`);
+          console.log(`- Fetching content for Module ${i + 1} / Lesson ${j + 1}: "${lesson.title}"`);
+
+          const contentResponse = await fetch('/api/generate-lesson-content', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ moduleTitle: currentModule.title, lessonTitle: lesson.title }),
+          });
+
+          if (!contentResponse.ok) {
+            throw new Error(`Failed to generate content for lesson "${lesson.title}".`);
+          }
+
+          const { content } = await contentResponse.json();
+          // Masukkan konten ke dalam objek kurikulum kita
+          finalCurriculum.modules[i].lessons[j].content = content;
+        }
+      }
+
+      console.log("✅ Step 3 Success: All lesson content generated.");
+      console.log("Final Curriculum:", finalCurriculum);      // --- Tahap 4: Finalisasi ---
+      setLoadingMessage("Finalizing your course...");
       
-      // Bersihkan localStorage dari progres lama jika ada
-      localStorage.removeItem(`progress_${name}`);
-
-      // Arahkan ke halaman kurikulum
+      // Validate the final curriculum structure before saving
+      if (!validateCurriculumStructure(finalCurriculum)) {
+        throw new Error("Generated curriculum has invalid structure");
+      }
+      
+      console.log("✅ Curriculum validation passed");
+      sessionStorage.setItem('generatedCurriculum', JSON.stringify(finalCurriculum));
+      localStorage.removeItem(`progress_${name}`); // Hapus progres lama
+      
       router.push('/generated-curriculum');
 
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred";
+      console.error("❌ Error during curriculum generation:", errorMessage);
       setError(errorMessage);
-    } finally {
-      setIsGenerating(false);
-    }
+      setIsGenerating(false); // Pastikan loader berhenti jika ada error
+    } 
+    // Tidak ada finally block di sini karena kita hanya ingin berhenti loading jika ada error atau setelah redirect
   };
 
   if (isLoading || questions.length === 0) {

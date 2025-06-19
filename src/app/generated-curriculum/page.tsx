@@ -9,6 +9,7 @@ import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
 // Impor helper yang relevan
 import { getCourseProgress, calculateModuleProgress, calculateCourseProgress } from "@/utils/progress";
+import { getCurriculumFromStorage } from "@/utils/curriculumValidator";
 
 // Interface for curriculum structure
 interface Module {
@@ -112,22 +113,24 @@ export default function GeneratedCurriculumPage() {
   const [courseProgress, setCourseProgress] = useState<{[key: string]: {lessons: {[key: number]: boolean}}}>({});
   const [progressPercentage, setProgressPercentage] = useState(0);
   const [progressVersion, setProgressVersion] = useState(0); // Tambahkan state ini untuk refresh
-    useEffect(() => {
-    const savedCurriculum = sessionStorage.getItem('generatedCurriculum');
-    if (savedCurriculum) {
-      const parsedCurriculum = JSON.parse(savedCurriculum);
-      setCurriculum(parsedCurriculum);
+  useEffect(() => {
+    const curriculum = getCurriculumFromStorage();
+    if (curriculum) {
+      console.log("✅ Valid curriculum loaded from storage:", curriculum);
+      setCurriculum(curriculum);
+      
       // Ambil dan atur data progres
-      const progressData = getCourseProgress(parsedCurriculum.title);
+      const progressData = getCourseProgress(curriculum.title);
       setCourseProgress(progressData);
-      const percentage = calculateCourseProgress(parsedCurriculum.title, parsedCurriculum.modules);
+      
+      const percentage = calculateCourseProgress(curriculum.title, curriculum.modules);
       setProgressPercentage(percentage);
     } else {
+      console.log("❌ No valid curriculum found, redirecting to create course");
       router.push('/create-course');
     }
     setIsLoading(false);
-  }, [router, progressVersion]); // Tambahkan progressVersion sebagai dependency
-
+  }, [router, progressVersion]);// Tambahkan progressVersion sebagai dependency
   // Trigger refresh ketika window focus (saat kembali dari halaman lain)
   useEffect(() => {
     const handleFocus = () => {

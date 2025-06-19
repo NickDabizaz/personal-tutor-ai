@@ -7,6 +7,7 @@ import Footer from "@/Components/Footer";
 import Link from "next/link";
 import { getCourseProgress, updateLessonCompletion, calculateModuleProgress } from "@/utils/progress";
 import ChatbotTutor from "@/Components/ChatbotTutor"; // Import the chatbot component
+import { loadLessonContentWithCache, isLessonContentLoaded } from "@/utils/lessonLoader"; // Add import for lazy loading lesson content
 
 interface Lesson { 
   title: string; 
@@ -37,6 +38,10 @@ export default function ModulePage() {
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number>(0);
   const [progressVersion, setProgressVersion] = useState(0);
   const [activeTab, setActiveTab] = useState<ActiveTab>('content'); // New state for tabs
+  // Add states for lazy loading lesson content
+  const [lessonContentLoading, setLessonContentLoading] = useState<boolean>(false);
+  const [lessonContentError, setLessonContentError] = useState<string | null>(null);
+  const [loadedLessonContent, setLoadedLessonContent] = useState<string>('');
 
   // Reset to 'content' tab whenever the lesson changes
   useEffect(() => {
@@ -55,8 +60,7 @@ export default function ModulePage() {
         }
       }
       setIsLoading(false);
-    }
-  }, [moduleId, courseTitle]);
+    }  }, [moduleId, courseTitle]);
 
   const handleSelectLesson = (index: number) => {
     setSelectedLessonIndex(index);
@@ -75,13 +79,54 @@ export default function ModulePage() {
       router.push('/generated-curriculum');
     }
   };
-    const lessonProgress = moduleId ? getCourseProgress(courseTitle)[moduleId]?.lessons || {} : {};
-  const moduleProgress = calculateModuleProgress({ lessons: lessonProgress }, currentModule?.lessons.length || 0);    // Re-calculate progress when progressVersion changes
-  useEffect(() => {    // This effect ensures the UI updates when progress changes
+
+  const lessonProgress = moduleId ? getCourseProgress(courseTitle)[moduleId]?.lessons || {} : {};
+  const moduleProgress = calculateModuleProgress({ lessons: lessonProgress }, currentModule?.lessons.length || 0);
+
+  // Re-calculate progress when progressVersion changes
+  useEffect(() => {
+    // This effect ensures the UI updates when progress changes
   }, [progressVersion]);
   
   const selectedLesson = currentModule?.lessons[selectedLessonIndex];
   const isLastLesson = selectedLessonIndex === (currentModule?.lessons.length || 0) - 1;
+
+  // Load lesson content when lesson changes
+  useEffect(() => {
+    if (selectedLesson && currentModule) {
+      const loadContent = async () => {
+        // If content is already loaded, no need to fetch again
+        if (isLessonContentLoaded(selectedLesson.content)) {
+          setLoadedLessonContent(selectedLesson.content);
+          return;
+        }
+
+        setLessonContentLoading(true);
+        setLessonContentError(null);
+
+        try {
+          const content = await loadLessonContentWithCache(currentModule.title, selectedLesson.title);
+          
+          // Update the lesson content in the curriculum
+          const updatedCurriculum = JSON.parse(sessionStorage.getItem('generatedCurriculum') || '{}');
+          const moduleIndex = updatedCurriculum.modules.findIndex((m: Module) => m.id === currentModule.id);
+          if (moduleIndex !== -1) {
+            updatedCurriculum.modules[moduleIndex].lessons[selectedLessonIndex].content = content;
+            sessionStorage.setItem('generatedCurriculum', JSON.stringify(updatedCurriculum));
+          }
+          
+          setLoadedLessonContent(content);
+        } catch (error) {
+          console.error('Failed to load lesson content:', error);
+          setLessonContentError('Failed to load lesson content. Please try again.');
+        } finally {
+          setLessonContentLoading(false);
+        }
+      };
+
+      loadContent();
+    }
+  }, [selectedLessonIndex, currentModule, selectedLesson]);
 
   if (isLoading) {
     return (
@@ -167,14 +212,35 @@ export default function ModulePage() {
               </div>
 
               {/* Conditional Tab Content */}              <div className="flex-grow">
-                {activeTab === 'content' && (
-                  <article className="p-6 md:p-8 overflow-y-auto h-[60vh]">
+                {activeTab === 'content' && (                  <article className="p-6 md:p-8 overflow-y-auto h-[60vh]">
                     <h2 className="text-2xl font-bold text-white mb-1">{selectedLesson.title}</h2>
                     <p className="text-sm text-gray-500 mb-6">Lesson {selectedLessonIndex + 1} of {currentModule.lessons.length}</p>
-                    <div 
-                      className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-amber-400" 
-                      dangerouslySetInnerHTML={{ __html: selectedLesson.content }} 
-                    />
+                    
+                    {lessonContentLoading && (
+                      <div className="flex items-center justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-amber-400 mr-3"></div>
+                        <span className="text-gray-400">Loading lesson content...</span>
+                      </div>
+                    )}
+                    
+                    {lessonContentError && (
+                      <div className="bg-red-900/20 border border-red-500 rounded-lg p-4 mb-4">
+                        <p className="text-red-400">{lessonContentError}</p>
+                        <button 
+                          onClick={() => window.location.reload()} 
+                          className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                    
+                    {!lessonContentLoading && !lessonContentError && (
+                      <div 
+                        className="prose prose-invert max-w-none prose-p:text-gray-300 prose-headings:text-amber-400" 
+                        dangerouslySetInnerHTML={{ __html: loadedLessonContent || selectedLesson.content }} 
+                      />
+                    )}
                   </article>
                 )}
                 
