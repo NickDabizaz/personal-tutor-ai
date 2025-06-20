@@ -36,17 +36,16 @@ export default function ModulePage() {
   const [currentModule, setCurrentModule] = useState<Module | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedLessonIndex, setSelectedLessonIndex] = useState<number>(0);
-  const [progressVersion, setProgressVersion] = useState(0);
-  const [activeTab, setActiveTab] = useState<ActiveTab>('content'); // New state for tabs
+  const [progressVersion, setProgressVersion] = useState(0);  const [activeTab, setActiveTab] = useState<ActiveTab>('content'); // New state for tabs
   // Add states for lazy loading lesson content
   const [lessonContentLoading, setLessonContentLoading] = useState<boolean>(false);
   const [lessonContentError, setLessonContentError] = useState<string | null>(null);
   const [loadedLessonContent, setLoadedLessonContent] = useState<string>('');
 
-  // Reset to 'content' tab whenever the lesson changes
-  useEffect(() => {
-    setActiveTab('content');
-  }, [selectedLessonIndex]);
+  // Removed auto-reset to 'content' tab to preserve chat history
+  // useEffect(() => {
+  //   setActiveTab('content');
+  // }, [selectedLessonIndex]);
 
   // Effect to load curriculum data
   useEffect(() => {
@@ -209,10 +208,11 @@ export default function ModulePage() {
                 >
                   AI Tutor
                 </button>
-              </div>
-
-              {/* Conditional Tab Content */}              <div className="flex-grow">
-                {activeTab === 'content' && (                  <article className="p-6 md:p-8 overflow-y-auto h-[60vh]">
+              </div>              {/* Conditional Tab Content */}
+              <div className="flex-grow">
+                {/* Konten Pelajaran */}
+                <div style={{ display: activeTab === 'content' ? 'block' : 'none' }}>
+                  <article className="p-6 md:p-8 overflow-y-auto h-[60vh]">
                     <h2 className="text-2xl font-bold text-white mb-1">{selectedLesson.title}</h2>
                     <p className="text-sm text-gray-500 mb-6">Lesson {selectedLessonIndex + 1} of {currentModule.lessons.length}</p>
                     
@@ -242,14 +242,15 @@ export default function ModulePage() {
                       />
                     )}
                   </article>
-                )}
-                
-                {activeTab === 'chatbot' && (
+                </div>
+                  {/* AI Tutor */}
+                <div style={{ display: activeTab === 'chatbot' ? 'block' : 'none' }}>
                   <ChatbotTutor
+                    key={selectedLessonIndex} // <-- TAMBAHKAN BARIS INI
                     lessonTitle={selectedLesson.title}
                     lessonContent={selectedLesson.content}
                   />
-                )}
+                </div>
               </div>
             </div>
 

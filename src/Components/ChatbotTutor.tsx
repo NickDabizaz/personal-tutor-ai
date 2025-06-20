@@ -14,33 +14,59 @@ interface ChatbotTutorProps {
   lessonContent: string;
 }
 
-export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTutorProps) {  const [messages, setMessages] = useState<Message[]>([]);
+export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTutorProps) {
+  // PERBAIKAN 1: Inisialisasi state dengan array kosong.
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  
-  // --- PERUBAHAN 1: Buat ref untuk container scroll ---
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // --- PERUBAHAN 2: Gunakan metode scroll yang lebih presisi ---
+  // PERBAIKAN 2: useEffect ini akan berjalan setiap kali lessonTitle berubah,
+  // memuat riwayat chat yang benar atau mereset ke pesan sapaan.
   useEffect(() => {
-    const lastMessage = messages[messages.length - 1];
-    // Hanya scroll jika container ada dan pesan terakhir punya konten
-    if (lastMessage && lastMessage.content && scrollContainerRef.current) {
-      const scrollContainer = scrollContainerRef.current;
-      // Set posisi scroll ke paling bawah
-      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    const storageKey = `chat_history_${lessonTitle}`;
+    try {
+      if (typeof window !== "undefined") {
+        const savedMessages = sessionStorage.getItem(storageKey);
+        // Jika ada riwayat tersimpan, gunakan itu.
+        if (savedMessages && savedMessages.length > 2) {
+          setMessages(JSON.parse(savedMessages));
+          return; // Hentikan eksekusi agar tidak menampilkan pesan sapaan
+        }
+      }
+    } catch (error) {
+      console.error("Failed to parse chat history from sessionStorage", error);
     }
-  }, [messages]);
-  
-  // Set the initial greeting message from the AI
-  useEffect(() => {
+
+    // Jika tidak ada riwayat, set pesan sapaan awal untuk pelajaran ini.
     setMessages([
       {
         role: 'assistant',
         content: `Hello! I am your AI tutor. Today we are covering the lesson "${lessonTitle}". Feel free to ask any questions about this topic.`
       }
     ]);
-  }, [lessonTitle]); // This effect runs only when the lesson title changes
+  }, [lessonTitle]); // <-- Dependency ini adalah kuncinya!
+
+  // useEffect untuk menyimpan chat ke sessionStorage
+  useEffect(() => {
+    // Hanya simpan jika sudah ada percakapan (lebih dari 1 pesan)
+    // dan pastikan messages tidak kosong
+    if (messages && messages.length > 1) {
+      const storageKey = `chat_history_${lessonTitle}`;
+      sessionStorage.setItem(storageKey, JSON.stringify(messages));
+    }
+  }, [messages, lessonTitle]);
+
+  // useEffect untuk auto-scroll
+  useEffect(() => {
+    if (scrollContainerRef.current) {
+      const scrollContainer = scrollContainerRef.current;
+      // Beri sedikit jeda agar DOM sempat update sebelum scroll
+      setTimeout(() => {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight;
+      }, 0);
+    }
+  }, [messages]);
 
   const handleSendMessage = async (e: FormEvent) => {
     e.preventDefault();
@@ -80,12 +106,11 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
         if (done) break;
         const chunk = decoder.decode(value, { stream: true });
         streamedContent += chunk;
-        
-        // Update the last message (the AI's message) in real-time
+          // Update the last message (the AI's message) in real-time
         setMessages(currentMessages => {
           const updatedMessages = [...currentMessages];
           const lastMsgIndex = updatedMessages.length - 1;
-          if (updatedMessages[lastMsgIndex].role === 'assistant') {
+          if (updatedMessages[lastMsgIndex]?.role === 'assistant') {
               updatedMessages[lastMsgIndex] = { role: 'assistant', content: streamedContent };
           }
           return updatedMessages;
@@ -96,7 +121,7 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
       setMessages(currentMessages => {
           const updatedMessages = [...currentMessages];
           const lastMsgIndex = updatedMessages.length - 1;
-           if (updatedMessages[lastMsgIndex].role === 'assistant') {
+           if (updatedMessages[lastMsgIndex]?.role === 'assistant') {
                 updatedMessages[lastMsgIndex] = { role: 'assistant', content: "Sorry, an error occurred. Please try again." };
            }
           return updatedMessages;
@@ -104,7 +129,7 @@ export default function ChatbotTutor({ lessonTitle, lessonContent }: ChatbotTuto
     } finally {
       setIsLoading(false);
     }
-  };  return (
+  };return (
     <div className="flex flex-col bg-gray-900">
       {/* --- PERUBAHAN 3: Pasang ref baru di sini --- */}
       <div ref={scrollContainerRef} className="p-6 overflow-y-auto h-[60vh]">
