@@ -1,15 +1,210 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import LoadingOverlay from "@/Components/LoadingOverlay";
 import AppHeader from "@/Components/AppHeader";
 import Footer from "@/Components/Footer";
+import { createClient } from "@/utils/supabase/client";
+
+// Profile Completion Modal Component
+function CompleteProfileModal({ 
+  isOpen, 
+  onClose, 
+  userEmail 
+}: { 
+  isOpen: boolean; 
+  onClose: () => void; 
+  userEmail: string;
+}) {
+  const [fullName, setFullName] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Generate placeholder from email
+  const emailPlaceholder = userEmail.split('@')[0];  const handleSaveProfile = async () => {
+    // Use fullName if provided, otherwise use emailPlaceholder as default
+    const nameToSave = fullName.trim() || emailPlaceholder;
+    
+    if (!nameToSave) {
+      alert("Please enter your full name");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      
+      // Get current user
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError || !user) {
+        console.error('Auth error:', authError);
+        alert("User not authenticated");
+        return;
+      }
+
+      console.log('Attempting to update profile for user:', user.id);
+      console.log('Name to save:', nameToSave);
+
+      // Since you have a trigger that creates users automatically,
+      // we'll use upsert to handle both cases
+      const { data, error } = await supabase
+        .from('users')
+        .upsert({ 
+          id: user.id,
+          email: user.email,
+          full_name: nameToSave 
+        }, {
+          onConflict: 'id'
+        })
+        .select();
+
+      if (error) {
+        console.error('Upsert error details:', error);
+        console.error('Error code:', error.code);
+        console.error('Error message:', error.message);
+        alert(`Failed to update profile: ${error.message || 'Unknown error'}`);
+        return;
+      }
+
+      console.log('Profile updated successfully:', data);
+      // Close modal on success
+      onClose();
+    } catch (error) {
+      console.error('Unexpected error saving profile:', error);
+      alert("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <div className="bg-gray-900 rounded-lg p-6 w-full max-w-md border border-gray-700">
+        <h2 className="text-xl font-bold text-white mb-4">Complete Your Profile</h2>
+        
+        {/* Profile Picture */}
+        <div className="flex flex-col items-center mb-6">
+          <Image 
+            src="/profile_picture.png" 
+            alt="Profile Picture" 
+            width={80}
+            height={80}
+            className="rounded-full mb-2 object-cover"
+          />
+          <button className="text-amber-400 text-sm hover:text-amber-300 transition-colors">
+            Change Picture
+          </button>
+        </div>
+
+        {/* Full Name Input */}
+        <div className="mb-6">
+          <label htmlFor="fullName" className="block text-sm font-medium text-gray-300 mb-2">
+            Full Name
+          </label>
+          <input
+            id="fullName"
+            type="text"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            placeholder={emailPlaceholder}
+            className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-amber-400 focus:border-transparent"
+            disabled={isLoading}
+          />
+        </div>
+
+        {/* Save Button */}
+        <button
+          onClick={handleSaveProfile}
+          disabled={isLoading}
+          className="w-full py-2 px-4 bg-amber-400 text-gray-900 font-semibold rounded-lg hover:bg-amber-300 disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-300"
+        >
+          {isLoading ? "Saving..." : "Save Profile"}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function CreateCourseForm() {
   const router = useRouter();
   const [form, setForm] = useState({ name: "", description: "" });
   const [errors, setErrors] = useState<{ name?: string; description?: string }>({});
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Profile completion modal states
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [userEmail, setUserEmail] = useState("");
+
+  // Check user profile on page load
+  useEffect(() => {
+    const checkUserProfile = async () => {
+      const supabase = createClient();
+      
+      try {
+        // Get current user
+        const { data: { user }, error: authError } = await supabase.auth.getUser();
+        
+        if (authError || !user) {
+          console.error('Auth error:', authError);
+          router.push('/login');
+          return;
+        }
+
+        setUserEmail(user.email || "");
+
+        // Check if user has full_name in the users table
+        const { data: userData, error: dbError } = await supabase
+          .from('users')
+          .select('full_name')
+          .eq('id', user.id)
+          .single();
+
+        if (dbError) {
+          console.error('Database error:', dbError);
+          
+          // If it's a "not found" error (PGRST116), create the user record
+          if (dbError.code === 'PGRST116') {
+            console.log('User not found in users table, creating new record...');
+            
+            const { error: insertError } = await supabase
+              .from('users')
+              .insert([
+                { 
+                  id: user.id,
+                  email: user.email,
+                  full_name: null
+                }
+              ]);
+            
+            if (insertError) {
+              console.error('Error creating user record:', insertError);
+            }
+            
+            // Show modal for new user
+            setShowProfileModal(true);
+            return;
+          }
+          
+          // For other database errors, show the modal as fallback
+          setShowProfileModal(true);
+          return;
+        }
+
+        // If full_name is null or empty, show the profile completion modal
+        if (!userData || !userData.full_name || userData.full_name.trim() === '') {
+          setShowProfileModal(true);
+        }
+      } catch (error) {
+        console.error('Error checking user profile:', error);
+        setShowProfileModal(true);
+      }
+    };
+
+    checkUserProfile();
+  }, [router]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
@@ -158,9 +353,15 @@ export default function CreateCourseForm() {
                 </button>
               </div>
             </form>
-          </div>
-        </main>
+          </div>        </main>
         <Footer />
+
+        {/* Profile Completion Modal */}
+        <CompleteProfileModal 
+          isOpen={showProfileModal}
+          onClose={() => setShowProfileModal(false)}
+          userEmail={userEmail}
+        />
       </div>
     </>
   );

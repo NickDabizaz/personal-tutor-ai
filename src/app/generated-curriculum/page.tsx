@@ -111,8 +111,8 @@ export default function GeneratedCurriculumPage() {
   const [isLoading, setIsLoading] = useState(true);
   // State baru untuk data progres
   const [courseProgress, setCourseProgress] = useState<{[key: string]: {lessons: {[key: number]: boolean}}}>({});
-  const [progressPercentage, setProgressPercentage] = useState(0);
-  const [progressVersion, setProgressVersion] = useState(0); // Tambahkan state ini untuk refresh
+  const [progressPercentage, setProgressPercentage] = useState(0);  const [progressVersion, setProgressVersion] = useState(0); // Tambahkan state ini untuk refresh
+
   useEffect(() => {
     const curriculum = getCurriculumFromStorage();
     if (curriculum) {
@@ -236,9 +236,7 @@ export default function GeneratedCurriculumPage() {
           </div>
 
         </div>
-      </div>
-
-      <Footer />
+      </div>      <Footer />
     </main>
   );
 }
