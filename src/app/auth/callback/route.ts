@@ -1,11 +1,15 @@
+// Lokasi: src/app/auth/callback/route.ts
+
 import { createClient } from '@/utils/supabase/server'
 import { NextResponse } from 'next/server'
 
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
-  // jika "next" ada di params, gunakan itu sebagai redirect
-  const next = searchParams.get('next') ?? '/generated-curriculum' // Default redirect ke halaman kurikulum
+  
+  // --- PERUBAHAN DI SINI ---
+  // Default redirect sekarang ke halaman pembuatan kursus.
+  const next = searchParams.get('next') ?? '/create-course' 
 
   if (code) {
     const supabase = await createClient()
@@ -15,6 +19,6 @@ export async function GET(request: Request) {
     }
   }
 
-  // return the user to an error page with instructions
+  // Jika ada error, arahkan ke halaman error.
   return NextResponse.redirect(`${origin}/auth/auth-code-error`)
 }

@@ -1,14 +1,14 @@
 -- =================================================================
--- SKRIP FINAL UNTUK RESET DAN SETUP DATABASE (V5 - RLS Policy Lengkap)
+-- SKRIP FINAL UNTUK RESET DAN SETUP DATABASE (V6 - Fungsi Create Course)
 -- Deskripsi: Skrip ini membersihkan dan membangun kembali seluruh struktur
--- database, termasuk tabel, fungsi, trigger, dan kebijakan Row Level Security.
--- Versi ini menambahkan kebijakan INSERT yang hilang pada tabel users
--- untuk memperbaiki error saat melengkapi profil.
+-- database. Versi ini menambahkan fungsi transaksional `create_course_with_details`
+-- untuk menyimpan kursus, modul, dan pelajaran secara atomik.
 -- =================================================================
 
 -- STEP 0: CLEAN UP (Urutan sudah diperbaiki)
 -- Membersihkan semua objek database sebelum membuat ulang untuk memastikan state yang bersih.
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS public.create_course_with_details(uuid, text, text, jsonb) CASCADE;
 DROP FUNCTION IF EXISTS public.handle_new_user() CASCADE;
 DROP FUNCTION IF EXISTS public.handle_updated_at() CASCADE;
 DROP TABLE IF EXISTS public.quiz_attempt_answers CASCADE;
@@ -25,7 +25,7 @@ DROP TABLE IF EXISTS public.users CASCADE;
 
 
 -- =================================================================
--- STEP 1: BUAT FUNGSI-FUNGSI TRIGGER
+-- STEP 1: BUAT FUNGSI-FUNGSI TRIGGER & PROSEDUR
 -- =================================================================
 
 -- Fungsi untuk memperbarui kolom `updated_at` secara otomatis.
@@ -48,6 +48,59 @@ BEGIN
   INSERT INTO public.users (id, email)
   VALUES (NEW.id, NEW.email);
   RETURN NEW;
+END;
+$$;
+
+-- Fungsi untuk menyimpan kursus, modul, dan pelajaran dalam satu transaksi atomik.
+CREATE OR REPLACE FUNCTION public.create_course_with_details(
+    p_user_id uuid,
+    p_course_title text,
+    p_course_description text,
+    p_modules jsonb -- Format: '[{"title": "...", "module_number": 1, "lessons": [{"title": "...", "lesson_number": 1, "content": "..."}, ...]}, ...]'
+)
+RETURNS uuid -- Mengembalikan ID kursus yang baru dibuat
+LANGUAGE plpgsql
+SECURITY DEFINER SET search_path = public
+AS $$
+DECLARE
+    v_course_id uuid;
+    v_module_id uuid;
+    module_record jsonb;
+    lesson_record jsonb;
+BEGIN
+    -- 1. Buat entri di tabel courses dan dapatkan ID-nya
+    INSERT INTO public.courses (user_id, title, description)
+    VALUES (p_user_id, p_course_title, p_course_description)
+    RETURNING id INTO v_course_id;
+
+    -- 2. Loop melalui setiap modul dalam data JSON
+    FOR module_record IN SELECT * FROM jsonb_array_elements(p_modules)
+    LOOP
+        -- 3. Buat entri di tabel modules dan dapatkan ID-nya
+        INSERT INTO public.modules (course_id, title, module_number)
+        VALUES (
+            v_course_id,
+            module_record->>'title',
+            (module_record->>'module_number')::integer
+        )
+        RETURNING id INTO v_module_id;
+
+        -- 4. Loop melalui setiap pelajaran dalam modul saat ini
+        FOR lesson_record IN SELECT * FROM jsonb_array_elements(module_record->'lessons')
+        LOOP
+            -- 5. Buat entri di tabel lessons
+            INSERT INTO public.lessons (module_id, title, lesson_number, content)
+            VALUES (
+                v_module_id,
+                lesson_record->>'title',
+                (lesson_record->>'lesson_number')::integer,
+                lesson_record->>'content'
+            );
+        END LOOP;
+    END LOOP;
+
+    -- 6. Kembalikan ID kursus yang baru dibuat sebagai konfirmasi
+    RETURN v_course_id;
 END;
 $$;
 
@@ -183,8 +236,6 @@ CREATE TRIGGER on_question_options_update BEFORE UPDATE ON public.question_optio
 ALTER TABLE public.users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view their own profile." ON public.users FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile." ON public.users FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
--- >> PENAMBAHAN KUNCI <<
--- Kebijakan ini memperbaiki error dengan mengizinkan pengguna untuk membuat profil mereka sendiri.
 CREATE POLICY "Users can insert their own profile." ON public.users FOR INSERT WITH CHECK (auth.uid() = id);
 
 -- Kebijakan untuk tabel: courses

@@ -162,3 +162,7 @@ label[data-checked="true"] {
 label[data-checked="true"] span {
     color: #FBBF24; /* amber-400 */
 }
+
+.modal-backdrop {
+  background-color: rgba(0, 0, 0, 0.7);
+}
