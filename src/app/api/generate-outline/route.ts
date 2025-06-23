@@ -27,18 +27,24 @@ export async function POST(req: NextRequest) {
     const qaString = answers.map((item: { question: string; answer: string }) => `Q: ${item.question}\\nA: ${item.answer}`).join("\\n\\n");
 
     console.log("Generating course outline...");
-    
-    const structurePrompt = `
+      const structurePrompt = `
       Based on the user's goal: "${name}"${description ? ` (${description})` : ""} and their answers: ${qaString}, generate a course outline.
       
       IMPORTANT DEVELOPMENT RULE: For faster testing, please generate a maximum of 3 modules.
       
+      STRICT REQUIREMENTS FOR MODULE TITLES:
+      - Module titles must be concise (maximum 4-6 words)
+      - Use action-oriented language (e.g., "Building", "Creating", "Implementing")
+      - Focus on the core skill or concept being taught
+      - Avoid redundant words like "Introduction to" or "Understanding"
+      - Make titles specific and practical
+      
       Provide your response in this exact format, with each item on a new line:
       Course Title: [A compelling title for the course]
       Course Description: [A brief, one-sentence description of the course]
-      Module 1: [Title for Module 1]
-      Module 2: [Title for Module 2]
-      Module 3: [Title for Module 3]
+      Module 1: [Concise, action-oriented title (4-6 words max)]
+      Module 2: [Concise, action-oriented title (4-6 words max)]
+      Module 3: [Concise, action-oriented title (4-6 words max)]
     `;
 
     const structureResponse = await callOllama(structurePrompt);
