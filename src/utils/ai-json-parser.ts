@@ -36,16 +36,8 @@ export function parseAiJsonResponse<T>(text: string): T {
   if (lastIndex === -1) {
     throw new Error("AI response contains an incomplete JSON structure.");
   }
-  
-  // Ekstrak substring JSON yang potensial
+    // Ekstrak substring JSON yang potensial
   let jsonString = text.substring(startIndex, lastIndex + 1);
-
-  // --- PERBAIKAN KUNCI ADA DI SINI ---
-  // "Sanitasi" string untuk mengganti karakter kontrol ilegal di dalam string literal.
-  // Ini akan mengganti newline literal dengan versi escaped-nya (\n -> \\n)
-  // Ini aman dilakukan karena newline yang valid (untuk pemformatan JSON itu sendiri) 
-  // tidak akan terpengaruh oleh replace sederhana ini pada string yang sudah diekstrak.
-  jsonString = jsonString.replace(/[\n\r]/g, '\\n');
 
   try {
     return JSON.parse(jsonString) as T;
